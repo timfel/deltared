@@ -103,10 +103,12 @@ class Constraint
 
   def initialize(strength, *methods)
     raise ArgumentError, "No methods specified" if methods.empty?
-    @variables = methods.map { |m| [ m.output, *m.inputs ] }.flatten.uniq
+    @variables = methods.map { |m|
+      [ m.output, *m.inputs ]
+    }.flatten.uniq.freeze
     @strength = strength
     @external_input = methods.any? { |m| m.external_input? }
-    @methods = methods
+    @methods = methods.freeze
     @enforcing_method = nil
   end
 
@@ -255,8 +257,14 @@ class Method
   def initialize(output, *inputs, &code)
     raise ArgumentError, "Block expected" unless code
     @output = output
-    @external_input = inputs.include? EXTERNAL or inputs.empty?
-    @inputs = inputs.reject { |i| i == EXTERNAL }
+    @inputs = inputs
+    if inputs.first == EXTERNAL
+      @external_input = true
+      @inputs.shift
+    else
+      @external_input = inputs.empty?
+    end
+    @inputs.freeze
     @code = code
   end
 
