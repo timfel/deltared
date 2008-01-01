@@ -46,7 +46,8 @@ WEAK     = 1
 WEAKEST  = 0
 
 class Variable
-  attr_accessor :value
+  attr_reader   :value
+  attr_writer   :value         #:nodoc:
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
   attr_accessor :walk_strength #:nodoc:
@@ -94,17 +95,17 @@ end
 class Constraint
   attr_reader :variables
   attr_reader :strength
-  attr_reader :input
+  attr_reader :external_input
   attr_reader :methods
   attr_reader :enforcing_method #:nodoc:
 
-  alias input? input
+  alias external_input? external_input
 
-  def initialize(is_input, strength, *methods)
+  def initialize(strength, *methods)
     raise ArgumentError, "No methods specified" if methods.empty?
     @variables = methods.map { |m| [ m.output, *m.inputs ] }.flatten.uniq
     @strength = strength
-    @input = is_input
+    @external_input = methods.any? { |m| m.external_input? }
     @methods = methods
     @enforcing_method = nil
   end
@@ -223,7 +224,7 @@ class Constraint
   end
 
   def constant_output? #:nodoc:
-    not input? and inputs.all? { |v| v.stay? }
+    not external_input? and inputs.all? { |v| v.stay? }
   end
 
   def output_walk_strength #:nodoc:
@@ -239,18 +240,27 @@ class Constraint
   private :output_walk_strength #:nodoc:
 end
 
+EXTERNAL = Object.new
+class << EXTERNAL #:nodoc:
+  def to_s ; "DeltaRed::EXTERNAL" ; end
+  alias inspect to_s
+end
+
 class Method
   attr_reader :output
   attr_reader :inputs
+  attr_reader :external_input
+  alias external_input? external_input
 
   def initialize(output, *inputs, &code)
     raise ArgumentError, "Block expected" unless code
     @output = output
-    @inputs = inputs
+    @external_input = inputs.include? EXTERNAL or inputs.empty?
+    @inputs = inputs.reject { |i| i == EXTERNAL }
     @code = code
   end
 
-  def execute
+  def execute #:nodoc:
     @output.value = @code.call *@inputs.map { |i| i.value }
     self
   end
@@ -264,7 +274,9 @@ class Plan
       sources = Set.new
       for variable in variables
         for constraint in variable.constraints
-          sources.add constraint if constraint.input? and constraint.enforcing_method
+          if constraint.external_input? and constraint.enforcing_method
+            sources.add constraint
+          end
         end
       end
       new(sources)
@@ -273,13 +285,15 @@ class Plan
     def new_from_constraints(*constraints)
       sources = Set.new
       for constraint in constraints
-        sources.add constraint if constraint.input? and constraint.enforcing_method
+        if constraint.external_input? and constraint.enforcing_method
+          sources.add constraint
+        end
       end
       new(sources)
     end
   end
 
-  def initialize(sources)
+  def initialize(sources) #:nodoc:
     @plan = []
     mark = Mark.new
     hot = sources
