@@ -1,3 +1,4 @@
+# DeltaRed - an implementation of the DeltaBlue algorithm
 #
 # Copyright 2007  MenTaLguY <mental@rydia.net>
 #
@@ -28,6 +29,11 @@
 
 require 'set'
 
+# This implementation is very closely based on the pseudocode presented in
+# the appendix of "Multi-way versus One-way Constraints in User Interfaces:
+# Experience with the DeltaBlue Algorithm" by Sannella et al., available at
+# http://citeseer.ist.psu.edu/sannella93multiway.html
+#
 module DeltaRed
 
 class Mark #:nodoc:
