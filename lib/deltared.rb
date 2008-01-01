@@ -39,13 +39,11 @@ module DeltaRed
 class Mark #:nodoc:
 end 
 
-module Strength
-  REQUIRED = 4
-  STRONG   = 3
-  MEDIUM   = 2
-  WEAK     = 1
-  WEAKEST  = 0
-end
+REQUIRED = 4
+STRONG   = 3
+MEDIUM   = 2
+WEAK     = 1
+WEAKEST  = 0
 
 class Variable
   attr_accessor :value
@@ -60,7 +58,7 @@ class Variable
     @value = value
     @constraints = Set.new
     @determined_by = nil
-    @walk_strength = Strength::WEAKEST
+    @walk_strength = WEAKEST
     @mark = nil
     @stay = true
   end
@@ -68,7 +66,7 @@ class Variable
   def remove_propagate_from #:nodoc:
     unenforced = Set.new
     @determined_by = nil
-    @walk_strength = Strength::WEAKEST
+    @walk_strength = WEAKEST
     @stay = true
     todo = Set[self]
     until todo.empty?
@@ -141,7 +139,7 @@ class Constraint
       @enforcing_method.output.mark = mark
       retracted
     else
-      if @strength == Strength::REQUIRED
+      if @strength == REQUIRED
         raise RuntimeError, "Failed to enforce a required constraint"
       end
       nil
