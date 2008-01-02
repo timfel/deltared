@@ -15,6 +15,7 @@ how to update them.
  DeltaRed.constraint! do |c|
    c.formula(a => b) { |v| v * 2 }
  end
+
  b.value = 3
  p a.value # => 6
  b.value = 2
@@ -28,7 +29,7 @@ multiplying <tt>b.value</tt> -- which DeltaRed helpfully passed to the
 block -- by 2).
 
 Now, one difference between Rake and DeltaRed is that Rake is a
-<em>on-way</em> constraint solver.  You can tell it how to make one
+<em>one-way</em> constraint solver.  You can tell it how to make one
 file given another, but that's it.  DeltaRed is a <em>multi-way</em>
 constraint solver, which means that you can go <em>both ways</em>:
 imagine writing a Rake rule that not only defined how to produce
@@ -43,6 +44,7 @@ Here's an example of a similar kind of thing with DeltaRed:
    c.formula(string => number) { |n| n.to_s }
    c.formula(number => string) { |s| s.to_i }
  end
+
  string.value = "23"
  p number.value # => 23
  number.value = 7
@@ -105,7 +107,8 @@ to translate between the "packed" and "unpacked" versions.
    end
  end
 
-Well, yeah.
+Well, yeah.  Anyway, at this point you can set +x+, or +y+, or +radius+
+or +theta+, and it will just work.
 
 Future versions of the library should make this kind of thing easier to do.
 
