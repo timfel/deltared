@@ -101,7 +101,9 @@ class Variable
 
   def value=(value)
     unless @edit_constraint
-      @edit_constraint = Constraint.new([self], REQUIRED, false, [EditMethod.new(self, value)])
+      edit_method = EditMethod.new(self, value)
+      @edit_constraint = Constraint.__new__([self], REQUIRED,
+                                            false, [edit_method])
     else
       @edit_constraint.methods.first.value = value
     end
@@ -128,6 +130,17 @@ class Constraint
   attr_reader :methods          #:nodoc:
   attr_reader :enforcing_method #:nodoc:
 
+  class << self
+    send :alias_method, :__new__, :new
+    def build(strength=MEDIUM, external_input=false)
+      raise ArgumentError, "No block given" unless block_given?
+      builder = Builder.new(strength, external_input)
+      yield builder
+      builder.build
+    end
+    alias new build
+  end
+
   alias external_input? external_input
   alias enabled? enabled
 
@@ -143,7 +156,7 @@ class Constraint
   def substitute(map)
     variables = variables.map { |v| map[v] || v }.uniq
     methods = methods.map { |m| m.substitute(map) }
-    Constraint.new(variables, @strength, @external_input, methods)
+    Constraint.__new__(variables, @strength, @external_input, methods)
   end
 
   def enable
@@ -308,14 +321,8 @@ class Constraint::Builder
 
   def bulid #:nodoc:
     raise RuntimeError, "No outputs defined" if @methods.empty?
-    Constraint.new(@variables.to_a, strength, @external_input, @methods.dup)
+    Constraint.__new__(@variables.to_a, strength, @external_input, @methods.dup)
   end
-end
-
-def Constraint.build(strength=MEDIUM, external_input=false)
-  builder = Constraint::Builder.new(strength, external_input)
-  yield builder
-  builder.build
 end
 
 module Method #:nodoc:
@@ -423,6 +430,20 @@ class Plan
     end
     self
   end
+end
+
+def self.namespace
+  ns = Namespace.new
+  if block_given?
+    yield ns
+  else
+    ns
+  end
+end
+
+def self.constraint(strength=STRONG, external_input=false)
+  raise ArgumentError, "No block given" unless block_given?
+  Constraint.new(strength, external_input) { |builder| yield builder }
 end
 
 end
