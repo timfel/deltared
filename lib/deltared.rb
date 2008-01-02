@@ -147,13 +147,17 @@ end
 # based on the values of other variables (its "inputs") and possibly
 # also external input.  In the case of conflicts, constraints with
 # higher strengths take precdence over constraints with lower
-# strengths.
+# strengths.  Constraints can be either volatile or non-volatile,
+# depending on whether they take input from sources outside the
+# constraint system.  Non-volatile constraints can be more heavily
+# optimized since they do not need to be recomputed all the time.
 #
 # A constraint may be created using a Constraint::Builder, typically
-# by calling DeltaRed.constraint.
-#
-# Newly created constraints are disabled, and must be enabled by
-# calling Constraint#enable before they will have an effect.
+# by calling DeltaRed.constraint.  Newly created constraints are
+# disabled by default, and must be enabled by calling Constraint#enable
+# before they will have an effect.  Alternately you can use
+# DeltaRed.constraint! to construct and enable a constraint in one
+# go.
 #
 # See also Variable.
 #
