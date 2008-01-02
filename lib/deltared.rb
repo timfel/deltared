@@ -380,13 +380,9 @@ class Constraint::Builder
   #
   # Because the block is only called when its input change, the formula
   # should be "pure": its result should not depend on anything but its
-  # inputs.  Formulae which depend on other things (e.g. user input)
-  # and need to be called more often should be defined using formula!
-  # instead, and will make the created constraint volatile.
-  #
-  # Multiple output variables may be defined through multiple calls to
-  # compute, but only if they take each other's value as inputs (and actually
-  # use them!).  Independent output variables are not supported at this time.
+  # inputs.  Formulae which depend on other things (e.g. GUI events)
+  # need to be evaluated more often and should be defined using formula!
+  # instead so that the created constraint will be volatile.
   #
   # Returns +self+.
   #
@@ -411,6 +407,30 @@ class Constraint::Builder
   # change independently of any input variables.
   #
   #  builder.formula!(a) { window.mouse_x }
+  #
+  # You can define multiple formulas in a single constraint (each
+  # one with its own output variable), but it won't work unless the
+  # formulae are legitimately interrelated.  Here's one example of
+  # what is allowed:
+  #
+  #  builder.formula(a => [b, c]) { |bv, cv| bv + cv }
+  #  builder.formula(b => [a, c]) { |av, cv| av - cv }
+  #  builder.formula(c => [a, b]) { |av, bv| av - bv }
+  #
+  # This constraint enforces the equality <tt>a = b + c</tt> -- note
+  # how each of the output variables are used by each of the
+  # formulae, and how any one of the formulae is sufficient to
+  # preserve the constraint at any time.
+  #
+  # Here's an example of what won't work (and DeltaRed will try to
+  # prevent it from being defined):
+  #
+  #  builder.formula(a => b) { |v| v * 2 }
+  #  builder.formula(c => b) { |v| v + 1 }
+  #
+  # This would require DeltaRed to evaluate more than one formula
+  # at a time to enforce the constraint; this second example should
+  # should be expressed as two separate constraints instead.
   #
   def formula(args, &code) #:yields:*values
     raise ArgumentError, "Block expected" unless code
