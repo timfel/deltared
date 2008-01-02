@@ -468,7 +468,8 @@ class Constraint::Builder
   #
   # Returns +self+.
   #
-  # See Constraint#volatile?
+  # See Constraint#volatile?, Variable#recompute, Constraint#recompute,
+  # and Plan#recompute.
   #
   def formula!(args, &code)
     formula(args, &code)
