@@ -72,7 +72,7 @@ Consider this rectangular to polar coordinate converter:
 (DeltaRed won't actually let you do this)
 
 The problem is that, while DeltaRed can choose between any of the
-formulae to run in response to an update (depending on which variables
+formulae to evaluate in response to an update (depending on which variables
 need updating and which have changed), the algorithm it uses doesn't
 allow it to choose more than one at a time.  Here, if +theta+ were
 modified, DeltaRed would end up having to choose to update +x+ or
