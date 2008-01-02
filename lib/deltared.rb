@@ -150,7 +150,7 @@ class Constraint
       @enforcing_method.output.mark = mark
       retracted
     else
-      if @strength == REQUIRED
+      if @strength >= REQUIRED
         raise RuntimeError, "Failed to enforce a required constraint"
       end
       nil
