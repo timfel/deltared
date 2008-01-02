@@ -138,6 +138,11 @@ class Variable
     end
     value
   end
+
+  def inspect
+    "#<DeltaRed::Variable object_id=#{object_id} value=#{@value.inspect}>"
+  end
+  alias to_s inspect
 end
 
 # A Constraint determines the values of some variables (its "outputs")
@@ -345,6 +350,11 @@ class Constraint
     min_strength
   end
   private :output_walk_strength #:nodoc:
+
+  def inspect
+    "#<DeltaRed::Constraint object_id=#{object_id} variables=#{@variables.inspect} enabled=#{@enabled.inspect}>"
+  end
+  alias to_s inspect
 end
 
 # Constraint builders are used to construct user-generated constraints
@@ -450,6 +460,11 @@ class Constraint::Builder
     @methods.each { |m| variables.merge m.inputs }
     Constraint.__new__(variables.to_a, @strength, @volatile, @methods.dup)
   end
+
+  def inspect
+    "#<DeltaRed::Constraint::Builder object_id=#{object_id}>"
+  end
+  alias to_s inspect
 end
 
 module Method #:nodoc:
@@ -586,6 +601,11 @@ class Plan
 
   # hide from rdoc
   send :const_set, :NULL_PLAN, Plan.null
+
+  def inspect
+    "#<DeltaRed::Plan object_id=#{object_id}>"
+  end
+  alias to_s inspect
 end
 
 # Uses a Constraint::Builder to build a new Constraint; call
