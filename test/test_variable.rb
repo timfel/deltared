@@ -14,6 +14,13 @@ class VariableTest < Test::Unit::TestCase
     assert_equal 3, v.value
   end
 
+  def test_trivial_set_value
+    v = DeltaRed::Variable.new(3)
+    assert_equal 3, v.value
+    v.value = 4
+    assert_equal 4, v.value
+  end
+
   def test_variables
     vars = DeltaRed::variables(3)
     assert_equal 3, vars.size

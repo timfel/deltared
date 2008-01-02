@@ -127,19 +127,23 @@ class Variable
   end
 
   # Sets the variable to a specific +value+ and propagates
-  # it with a strength of +REQUIRED+; conceptually (and actually,
-  # for the moment), this creates a constant-value constraint and
-  # briefly enables it to force the variable's value to the desired
-  # value.
+  # it with a strength of +REQUIRED+; conceptually, this creates a
+  # constant-value constraint on the variable and briefly enables it
+  # in order to force the variable to the desired value.
+  #
   def value=(value)
-    unless @edit_constraint
-      @edit_method = EditMethod.new(self, value)
-      @edit_constraint = Constraint.__new__([self], REQUIRED,
-                                            false, [@edit_method])
+    if @constraints.empty?
+      @value = value
     else
-      @edit_method.value = value
+      unless @edit_constraint
+        @edit_method = EditMethod.new(self, value)
+        @edit_constraint = Constraint.__new__([self], REQUIRED,
+                                              false, [@edit_method])
+      else
+        @edit_method.value = value
+      end
+      @edit_constraint.enable.disable
     end
-    @edit_constraint.enable.disable
     value
   end
 end
