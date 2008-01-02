@@ -448,7 +448,7 @@ class Constraint::Builder
   # Builds a new Constraint based on the formulae specified so far.  The
   # constraint must be enabled with Constraint#enable before it has an
   # effect.
-  def bulid
+  def build
     raise RuntimeError, "No outputs defined" if @methods.empty?
     variables = @outputs.dup
     @methods.each { |m| variables.merge m.inputs }
