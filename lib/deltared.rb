@@ -51,9 +51,11 @@ class Variable
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
   attr_accessor :walk_strength #:nodoc:
-  attr_accessor :mark          #:nodoc:
   attr_accessor :stay          #:nodoc:
-  alias stay? stay             #:nodoc:
+  attr_writer   :mark	       #:nodoc:
+  send :alias_method, :mark, :mark=
+  undef mark=
+  send :alias_method, :stay?, :stay
 
   def initialize(value)
     @value = value
@@ -89,6 +91,10 @@ class Variable
     @constraints.select { |c|
       c.enforcing_method and c != @determined_by
     }.to_set
+  end
+
+  def marked?(mark) #:nodoc:
+    @mark.eql? mark
   end
 end
 
@@ -151,13 +157,13 @@ class Constraint
   def enforce(mark) #:nodoc:
     @enforcing_method = weakest_method(mark)
     if @enforcing_method
-      inputs.each { |v| v.mark = mark }
+      inputs.each { |v| v.mark mark }
       output = @enforcing_method.output
       retracted = output.determined_by
       retracted.unenforce if retracted
       output.determined_by = self
       add_propagate(mark)
-      @enforcing_method.output.mark = mark
+      @enforcing_method.output.mark mark
       retracted
     else
       if @strength >= REQUIRED
@@ -192,7 +198,7 @@ class Constraint
     until todo.empty?
       constraint = todo.find { true }
       todo.delete constraint
-      if constraint.enforcing_method.output.mark == mark
+      if constraint.enforcing_method.output.marked? mark
         constraint.incremental_remove
         raise RuntimeError, "Cycle encountered"
       end
@@ -234,7 +240,7 @@ class Constraint
   private :inputs #:nodoc:
 
   def inputs_known?(mark) #:nodoc:
-    inputs.all? { |v| v.mark == mark or v.stay? }
+    inputs.all? { |v| v.marked? mark or v.stay? }
   end
 
   def recalculate #:nodoc:
@@ -374,7 +380,7 @@ class Plan
       output = constraint.enforcing_method.output
       if output.mark != mark and constraint.inputs_known?(mark)
         @plan.push constraint
-        output.mark = mark
+        output.mark mark
         hot.merge output.consuming_constraints
       end
     end
