@@ -108,7 +108,7 @@ class Variable
 
   # Recomputes the variable's value and returns +self+.
   def recompute
-    Plan.new_from_variables(self).execute unless @constraints.empty?
+    Plan.new_from_variables(self).recompute unless @constraints.empty?
     self
   end
 
@@ -329,7 +329,7 @@ class Constraint
 
   # Recomputes the constraint's output variables and returns +self+.
   def recompute
-    Plan.new_from_constraints(self).execute
+    Plan.new_from_constraints(self).recompute
     self
   end
 
