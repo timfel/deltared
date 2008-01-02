@@ -7,7 +7,8 @@ require 'rake/clean'
 GEM_VERSION = "0.1"
 
 Rake::RDocTask.new do |task|
-  task.rdoc_files.add [ 'lib/**/*.rb' ]
+  task.main = "README"
+  task.rdoc_files.add [ 'README', 'lib/**/*.rb' ]
 end
 
 task :clobber => [ :clean ]
@@ -28,6 +29,7 @@ gemspec = Gem::Specification.new do |gemspec|
   gemspec.test_file = 'test/test_all.rb'
   gemspec.files = FileList[ 'Rakefile', 'test/*.rb', 'lib/**/*.rb' ]
   gemspec.require_paths = [ 'lib' ]
+  gemspec.rdoc_options << '--main' << 'README'
   gemspec.has_rdoc = true
   gemspec.platform = Gem::Platform::RUBY
 end

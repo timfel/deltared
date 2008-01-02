@@ -1,0 +1,119 @@
+DeltaRed is a multi-way constraint solving library for Ruby based on the
+the DeltaBlue algorithm as presented in "Multi-way versus One-way
+Constraints in User Interfaces: Experience with the DeltaBlue Algorithm"
+by Sannella et al. (available http://citeseer.ist.psu.edu/sannella93multiway.html )
+
+== So, er, what does it do?
+
+Think Rake, but for your program's data instead of files.  Rake is actually
+a constraint solver itself: when a file is updated, it knows which other
+files to update and the how to update them.  Similarly, when a DeltaRed
+"variable" changes, DeltaRed knows which other variables to update and
+how to update them.
+
+ a, b = DeltaRed.variables(0, 0)
+ DeltaRed.constraint! do |c|
+   c.formula(a => b) { |v| v * 2 }
+ end
+ b.value = 3
+ p a.value # => 6
+ b.value = 2
+ p a.value # => 4
+
+This is like a Rake rule: it declares that <tt>a.value</tt> depends on
+<tt>b.value</tt>.  When <tt>b.value</tt> is set to some value, DeltaRed
+knows to update <tt>a.value</tt>, and like Rake, the block attached to the
+rule tells it how to do that (in this case, <tt>a.value</tt> is obtained by
+multiplying <tt>b.value</tt> -- which DeltaRed helpfully passed to the
+block -- by 2).
+
+Now, one difference between Rake and DeltaRed is that Rake is a
+<em>on-way</em> constraint solver.  You can tell it how to make one
+file given another, but that's it.  DeltaRed is a <em>multi-way</em>
+constraint solver, which means that you can go <em>both ways</em>:
+imagine writing a Rake rule that not only defined how to produce
+an <tt>.o</tt> file from a <tt>.c</tt> file, but also how to recover
+a <tt>.c</tt> file from an existing <tt>.o</tt> file.  (Of course,
+it'd still be up to you to write the decompiler...)
+
+Here's an example of a similar kind of thing with DeltaRed:
+
+ string, number = DeltaRed.variables("0", 0)
+ DeltaRed.constraint! do |c|
+   c.formula(string => number) { |n| n.to_s }
+   c.formula(number => string) { |s| s.to_i }
+ end
+ string.value = "23"
+ p number.value # => 23
+ number.value = 7
+ p string.value # => "7"
+
+If +string.value+ gets set to a different string, DeltaRed will
+know to set +number.value+ to its integer equivalent, and if
++number.value+ is set to a different integer, DeltaRed will automatically
+update +string.value+.
+
+== That sounds really awesome!  What's the catch?
+
+DeltaRed _does_ have limitations to what you can do in a single constraint,
+however.  Consider this rectangular to polar coordinate converter:
+
+ x, y, radius, theta = DeltaRed.variables(0.0, 0.0, 0.0, 0.0)
+ DeltaRed.constraint! do |c|
+   c.formula(x => [radius, theta]) { |r, t| r*cos(t) }
+   c.formula(y => [radius, theta]) { |r, t| r*sin(t) }
+   c.formula(radius => [x, y]) { |x_, y_| Math.sqrt(x_*x_, y_*y_) }
+   c.formula(theta  => [x, y]) { |x_, y_| Math.atan2(x_, y_) }
+ end
+
+(DeltaRed won't actually let you do this)
+
+The problem is that, while DeltaRed can choose between any of the
+formulae to run in response to an update (depending on which variables
+need updating and which have changed), the algorithm it uses doesn't
+allow it to choose more than one at a time.  Here, if +theta+ were
+modified, DeltaRed would end up having to choose to update +x+ or
++y+, but it wouldn't be able to update both, which is really want you want.
+
+To make this work, you'll need to use an intermediate constraint
+which works on both coordinates at once, and constraints to connect
+to the separated variables:
+
+ x, y, radius, theta = DeltaRed.variables(0.0, 0.0, 0.0, 0.0)
+ DeltaRed.variables([0.0, 0.0], [0.0, 0.0]) do |rect, polar|
+   DeltaRed.constraint! do |c| # rect and polar
+     c.formula(rect => polar) { |p| [ p[0]*Math.cos(p[1]),
+                                      p[0]*Math.sin(p[1]) ] }
+     c.formula(polar => rect) { |r| [ Math.sqrt(r[0]*r[0]+r[1]*r[1]),
+                                      Math.atan2(r[0], r[1]) ] }
+   end
+   DeltaRed.constraint! do |c| # x and rect
+     c.formula(x => rect) { |r| r[0] }
+     c.formula(rect => [ rect, x ]) { |r, x_| [ x_, r[1] ] }
+   end
+   DeltaRed.constraint! do |c| # y and rect
+     c.formula(y => rect) { |r| r[1] }
+     c.formula(rect => [ rect, y ]) { |r, y_| [ r[0], y_ ] }
+   end
+   DeltaRed.constraint! do |c| # radius and polar
+     c.formula(radius => polar) { |p| p[0] }
+     c.formula(polar => [ polar, radius ]) { |p, r| [ r, p[1] ] }
+   end
+   DeltaRed.constraint! do |c| # theta and polar
+     c.formula(theta => polar) { |p| p[1] }
+     c.formula(polar => [ polar, theta ]) { |p, t| [ p[0], t] }
+   end
+ end
+
+Well, yeah.
+
+Future versions of the library should make this kind of thing easier to do.
+
+== What about threads?
+
+DeltaRed is perfectly threadsafe as long as threads don't share variables
+or constraints directly or indirectly.  That means you're fine as long as
+different threads' variables or constraints don't get connected to each
+other by intermediate constraints.  Beyond that, any kind of sharing
+will require external synchronization.
+
