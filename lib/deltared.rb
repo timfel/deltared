@@ -60,8 +60,7 @@ WEAKEST  = 0 # the weakest constraint strength
 # the values of different variables can be enforced by 
 # creating Constraint objects referencing those variables.
 #
-# Variables can be obtained by name from a Namespace, or
-# created directly using Variable.new or DeltaRed.variable.
+# Variables can be created via Variable.new or DeltaRed.variable.
 #
 class Variable
   attr_reader   :value         # the variable's current value
@@ -140,48 +139,6 @@ class Variable
     end
     @edit_constraint.enable.disable
     value
-  end
-end
-
-# Namespaces provide a convenient way of using variables by name
-# instead of having to juggle Ruby references to them.  Within a
-# namespace, variables are uniquely named by Ruby symbols.
-#
-class Namespace
-  include Enumerable
-
-  # Creates a new variable namespace
-  def initialize
-    @variables = {}
-  end
-
-  # Obtains variables by name, returning a single variable if
-  # only a single name is given, otherwise returning an array of
-  # variables.
-  def [](*names)
-    raise ArgumentError, "No names given" if names.empty?
-    if names.size == 1
-      @variables[names.first.to_sym] ||= Variable.new
-    else
-      @names.map { |name| @variables[name.to_sym] ||= Variable.new }
-    end
-  end
-
-  # Returns the names of all the variables currently in this
-  # namespace
-  def names
-    @variables.keys
-  end
-
-  # Returns all of the variables currently in this namespace
-  def variables
-    @variables.values
-  end
-
-  # Iterates over all of the variables in this namespace with
-  # their name
-  def each
-    @variables.each { |name, variable| yield name, variable }
   end
 end
 
@@ -583,18 +540,6 @@ class Plan
   end
 
   NULL_PLAN = Plan.null #:nodoc:
-end
-
-# Creates a new Namespace, yielding it to the provided block, or
-# simply returning it if no block is given.
-#
-def self.namespace
-  namespace = Namespace.new
-  if block_given?
-    yield namespace
-  else
-    namespace
-  end
 end
 
 # Uses a Constraint::Builder to build a new Constraint; call
