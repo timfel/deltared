@@ -29,6 +29,17 @@
 
 require 'set'
 
+class Set #:nodoc:
+  instance_methods = self.instance_methods
+  unless instance_methods.include? "shift" or instance_methods.include? :shift
+    def shift
+      value = find { true }
+      delete value
+      value
+    end
+  end
+end
+
 # This implementation is very closely based on the pseudocode presented in
 # the appendix of "Multi-way versus One-way Constraints in User Interfaces:
 # Experience with the DeltaBlue Algorithm" by Sannella et al., available at
@@ -39,14 +50,20 @@ module DeltaRed
 class Mark #:nodoc:
 end 
 
-REQUIRED = 4
-STRONG   = 3
+REQUIRED = 4 # the highest constraint strength; fails if it cannot be enforced
+STRONG   = 3 
 MEDIUM   = 2
 WEAK     = 1
-WEAKEST  = 0
+WEAKEST  = 0 # the weakest constraint strength
 
+# Variables are holders for values.  Relationships between
+# the values of different variables can be enforced by 
+# creating Constraint objects referencing those variables.
+#
+# Variables can be obtained by name from a Namespace.
+#
 class Variable
-  attr_reader   :value
+  attr_reader   :value         # the variable's current value
   attr_writer   :value         #:nodoc:
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
@@ -58,6 +75,8 @@ class Variable
   undef mark=
   send :alias_method, :stay?, :stay
 
+  # Creates a new constraint variable with an initial +value+ (or
+  # +nil+ if none is provided).
   def initialize(value=nil)
     @value = value
     @constraints = Set.new
@@ -75,18 +94,24 @@ class Variable
     @stay = true
     todo = Set[self]
     until todo.empty?
-      variable = todo.find { true }
-      todo.delete variable
+      variable = todo.shift
       for constraint in variable.constraints
         unenforced.add constraint unless constraint.enforcing_method
       end
       for constraint in variable.consuming_constraints
-        constraint.recalculate
+        constraint.recompute_incremental
         todo.add constraint.enforcing_method.output
       end
     end
     # sort by decreasing strength
     unenforced.to_a.sort! { |a, b| b.strength <=> a.strength }
+  end
+
+  # Recomputes the variable's value if its value is determined by
+  # external input.
+  def recompute
+    Plan.new_from_variables(self).execute
+    self
   end
 
   def consuming_constraints #:nodoc:
@@ -99,6 +124,10 @@ class Variable
     @mark.eql? mark
   end
 
+  # Sets the variable to a specific +value+ and propagates
+  # it with a strength of +REQUIRED+; conceptually, this
+  # creates a constant-value constraint and briefly enables
+  # it to force the variable's value to the desired value
   def value=(value)
     unless @edit_constraint
       edit_method = EditMethod.new(self, value)
@@ -112,40 +141,73 @@ class Variable
   end
 end
 
+# Namespaces provide a convenient way of using variables by name
+# instead of having to juggle Ruby references to them.
 class Namespace
   include Enumerable
 
+  # Creates a new variable namespace
   def initialize
     @variables = {}
   end
 
+  # Returns the variable named +name+, creating a new variable
+  # if one does not already exist
   def [](name)
     @variables[name.to_sym] ||= Variable.new
   end
 
+  # Returns the names of all the variables currently in this
+  # namespace
   def names
     @variables.keys
   end
 
+  # Returns all of the variables currently in this namespace
   def variables
     @variables.values
   end
 
+  # Iterates over all of the variables in this namespace with
+  # their name
   def each
-    @variables.each { |k, v| yield k, v }
+    @variables.each { |name, variable| yield name, variable }
   end
 end
 
+# A Constraint controls the values of some variables (its "outputs")
+# based on the values of other variables (its "inputs") and possibly
+# also external input.
+#
+# See also Variable.
+#
 class Constraint
-  attr_reader :enabled
-  attr_reader :variables
+  attr_reader :enabled   # whether this constraint is currently enabled
+  attr_reader :variables # the input and output variables for this constraint
+  # the strength of this constraint, generally a value between
+  # WEAKEST and REQUIRED
   attr_reader :strength
+  # boolean indicating whether the constraint's outputs are determined
+  # by anything besides its input variables (for example, user input)
   attr_reader :external_input
   attr_reader :methods          #:nodoc:
   attr_reader :enforcing_method #:nodoc:
+  alias external_input? external_input
+  alias enabled? enabled
 
   class << self
     send :alias_method, :__new__, :new
+    # Uses a Constraint::Builder to build a new Constraint; call
+    # Constraint::Builder#compute on the yielded +builder+ to
+    # specify how each output variable is computed.
+    #
+    # +strength+ is the strength of the new constraint, and
+    # +external_input" is a boolean indicating whether any of the
+    # constraint's outputs can be affected by anything besides
+    # the values of its inputs.
+    #
+    # See also DeltaRed.constraint.
+    #
     def build(strength=MEDIUM, external_input=false)
       raise ArgumentError, "No block given" unless block_given?
       builder = Builder.new(strength, external_input)
@@ -154,9 +216,6 @@ class Constraint
     end
     alias new build
   end
-
-  alias external_input? external_input
-  alias enabled? enabled
 
   def initialize(variables, strength, external_input, methods) #:nodoc:
     @variables = variables.freeze
@@ -167,12 +226,19 @@ class Constraint
     @enabled = false
   end
 
+  # Creates a copy of this constraint with its variables replaced with
+  # other variables as specified by +map+.  This is useful if you want
+  # to create a single constraint to use as a "template" for creating
+  # other constraints over different variables.
+  #
+  # Returns the new constraint.
   def substitute(map)
     variables = variables.map { |v| map[v] || v }.uniq
     methods = methods.map { |m| m.substitute(map) }
     Constraint.__new__(variables, @strength, @external_input, methods)
   end
 
+  # Enables this constraint, adjusting the values of any variables as needed.
   def enable
     return @self if @enabled
     @enforcing_method = nil
@@ -235,18 +301,18 @@ class Constraint
   def add_propagate(mark) #:nodoc:
     todo = Set[self]
     until todo.empty?
-      constraint = todo.find { true }
-      todo.delete constraint
+      constraint = todo.shift
       if constraint.enforcing_method.output.marked? mark
         constraint.incremental_remove
         raise RuntimeError, "Cycle encountered"
       end
-      constraint.recalculate
+      constraint.recompute_incremental
       todo.merge constraint.enforcing_method.output.consuming_constraints
     end
     self
   end
 
+  # Disables this constraint, adjusting the values of any variables as needed.
   def disable
     return self unless @enabled
     if @enforcing_method
@@ -282,11 +348,18 @@ class Constraint
     inputs.all? { |v| v.marked? mark or v.stay? }
   end
 
-  def recalculate #:nodoc:
+  def recompute_incremental #:nodoc:
     output = @enforcing_method.output
     output.walk_strength = output_walk_strength
     stay = output.stay = constant_output?
     @enforcing_method.execute if stay
+    self
+  end
+
+  # Recomputes the constraint's outputs if the constraint
+  # uses external input.
+  def recompute
+    Plan.new_from_constraints(self).execute
     self
   end
 
@@ -315,7 +388,34 @@ class Constraint::Builder
     @external_input = !!external_input
   end
 
-  def compute(args, &code)
+  # Specifies an output variable for this constraint, optionally depending
+  # on the value of other variables.  The block will be called whenever
+  # the variable's value needs to be updated; it receives the values of any
+  # input variables as arguments, and its result becomes the new value
+  # of the variable.
+  #
+  # Examples (+a+ , +b+ and +c+ are all Variable objects):
+  # 
+  # +a+ is 3 times the value of +b"
+  #
+  #  builder.compute(a => b) { |b_value| b_value * 3 }
+  # 
+  # +a+ is the sum of the values of +b+ and +c+
+  #
+  #  builder.compute(a => [ b, c ]) do |b_value, c_value|
+  #   b_value + c_value
+  #  end
+  #
+  # +a+ is fixed at 30 (unless a stronger constraint overrides)
+  #
+  #  builder.compute(a) { 30 }
+  #
+  # +a+ is determined by the current mouse position -- note that
+  # external_input should be set for this constraint!
+  #
+  #  builder.compute(a) { window.mouse_x }
+  #
+  def compute(args, &code) #:yields:*values
     raise ArgumentError, "Block expected" unless code
     case args
     when Hash
@@ -333,7 +433,9 @@ class Constraint::Builder
     self
   end
 
-  def bulid #:nodoc:
+  # Builds a new constraint based on the outputs that have been
+  # specified so far.
+  def bulid
     raise RuntimeError, "No outputs defined" if @methods.empty?
     Constraint.__new__(@variables.to_a, strength, @external_input, @methods.dup)
   end
@@ -395,10 +497,20 @@ class UserMethod #:nodoc:
   end
 end
 
+# A Plan provides an optimized way to recompute variables without enabling
+# or disabling constraints.  A Plan remains valid only until a constraint
+# is changed.
+#
 class Plan
   class << self
     private :new
 
+    def null #:nodoc:
+      new([])
+    end
+
+    # Creates and returns an update Plan for updating the given variables
+    # and any variables which depend on them.
     def new_from_variables(*variables)
       sources = Set.new
       for variable in variables
@@ -408,9 +520,15 @@ class Plan
           end
         end
       end
-      new(sources)
+      unless sources.empty?
+        new(sources)
+      else
+        NULL_PLAN
+      end
     end
 
+    # Creates and returns an update Plan for updating variables influenced
+    # by the given constraints.
     def new_from_constraints(*constraints)
       sources = Set.new
       for constraint in constraints
@@ -418,7 +536,11 @@ class Plan
           sources.add constraint
         end
       end
-      new(sources)
+      unless sources.empty?
+        new(sources)
+      else
+        NULL_PLAN
+      end
     end
   end
 
@@ -427,34 +549,45 @@ class Plan
     mark = Mark.new
     hot = sources
     until hot.empty?
-      constraint = hot.find { true }
-      hot.delete constraint
-      output = constraint.enforcing_method.output
-      if not output.marked? mark and constraint.inputs_known?(mark)
-        @plan.push constraint
+      constraint = hot.shift
+      enforcing_method = constraint.enforcing_method
+      output = enforcing_method.output
+      if not output.marked? mark and constraint.inputs_known? mark
+        @plan.push enforcing_method
         output.mark mark
         hot.merge output.consuming_constraints
       end
     end
   end
 
+  # Executes the update plan, recomputing the output values of the
+  # any variables affected by the plan.
   def execute
-    for constraint in @plan
-      constraint.enforcing_method.execute
-    end
+    @plan.each { |method| method.execute }
     self
   end
+
+  NULL_PLAN = Plan.null #:nodoc:
 end
 
+# Creates a new Namespace, yielding it to the provided block, or
+# simply returning it if no block is given.
+#
 def self.namespace
-  ns = Namespace.new
+  namespace = Namespace.new
   if block_given?
-    yield ns
+    yield namespace
   else
-    ns
+    namespace
   end
 end
 
+# Uses a Constraint::Builder to build a new Constraint; call
+# Constraint::Builder#compute on the yielded +builder+ to
+# specify how each output variable is computed.
+#
+# This method is a wrapper for Constraint.build.
+#
 def self.constraint(strength=STRONG, external_input=false)
   raise ArgumentError, "No block given" unless block_given?
   Constraint.new(strength, external_input) { |builder| yield builder }
