@@ -48,15 +48,15 @@ Here's an example of a similar kind of thing with DeltaRed:
  number.value = 7
  p string.value # => "7"
 
-If +string.value+ gets set to a different string, DeltaRed will
-know to set +number.value+ to its integer equivalent, and if
-+number.value+ is set to a different integer, DeltaRed will automatically
-update +string.value+.
+If <tt>string.value</tt> gets set to a different string, DeltaRed will
+know to set <tt>number.value</tt> to its integer equivalent, and if
+<tt>number.value</tt> is set to a different integer, DeltaRed will
+automatically update <tt>string.value</tt>.
 
 == That sounds really awesome!  What's the catch?
 
-DeltaRed _does_ have limitations to what you can do in a single constraint,
-however.  Consider this rectangular to polar coordinate converter:
+DeltaRed _does_ have limitations to what you can do in a single constraint.
+Consider this rectangular to polar coordinate converter:
 
  x, y, radius, theta = DeltaRed.variables(0.0, 0.0, 0.0, 0.0)
  DeltaRed.constraint! do |c|
@@ -76,8 +76,8 @@ modified, DeltaRed would end up having to choose to update +x+ or
 +y+, but it wouldn't be able to update both, which is really want you want.
 
 To make this work, you'll need to use an intermediate constraint
-which works on both coordinates at once, and constraints to connect
-to the separated variables:
+which works on both coordinates at once, and four more constraints
+to translate between the "packed" and "unpacked" versions.
 
  x, y, radius, theta = DeltaRed.variables(0.0, 0.0, 0.0, 0.0)
  DeltaRed.variables([0.0, 0.0], [0.0, 0.0]) do |rect, polar|
