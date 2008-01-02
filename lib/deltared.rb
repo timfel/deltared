@@ -60,7 +60,8 @@ WEAKEST  = 0 # the weakest constraint strength
 # the values of different variables can be enforced by 
 # creating Constraint objects referencing those variables.
 #
-# Variables can be obtained by name from a Namespace.
+# Variables can be obtained by name from a Namespace, or
+# created directly using Variable.new or DeltaRed.variable.
 #
 class Variable
   attr_reader   :value         # the variable's current value
@@ -143,7 +144,9 @@ class Variable
 end
 
 # Namespaces provide a convenient way of using variables by name
-# instead of having to juggle Ruby references to them.
+# instead of having to juggle Ruby references to them.  Within a
+# namespace, variables are uniquely named by Ruby symbols.
+#
 class Namespace
   include Enumerable
 
@@ -152,10 +155,16 @@ class Namespace
     @variables = {}
   end
 
-  # Returns the variable named +name+, creating a new variable
-  # if one does not already exist
-  def [](name)
-    @variables[name.to_sym] ||= Variable.new
+  # Obtains variables by name, returning a single variable if
+  # only a single name is given, otherwise returning an array of
+  # variables.
+  def [](*names)
+    raise ArgumentError, "No names given" if names.empty?
+    if names.size == 1
+      @variables[names.first.to_sym] ||= Variable.new
+    else
+      @names.map { |name| @variables[name.to_sym] ||= Variable.new }
+    end
   end
 
   # Returns the names of all the variables currently in this
