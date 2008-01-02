@@ -609,6 +609,12 @@ def self.constraint!(strength=MEDIUM)
   Constraint.new(strength) { |builder| yield builder }.enable
 end
 
+# Just a wrapper around DeltaRed::Variable.new; creates
+# a new variable with an initial +value+ and returns it.
+def self.variable(value=nil)
+  Variable.new(value)
+end
+
 # Creates new variable objects with the given initial +values+.
 # If a block is given, a new variable is created for every block
 # argument; if there are more arguments than default values,

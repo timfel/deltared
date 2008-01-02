@@ -5,6 +5,10 @@ class VariableTest < Test::Unit::TestCase
   def test_new
     v = DeltaRed::Variable.new
     assert DeltaRed::Variable === v
+    assert_equal nil, v.value
+    v = DeltaRed::Variable.new(3)
+    assert DeltaRed::Variable === v
+    assert_equal 3, v.value
   end
 
   def test_get_value
@@ -19,6 +23,15 @@ class VariableTest < Test::Unit::TestCase
     assert_equal 3, v.value
     v.value = 4
     assert_equal 4, v.value
+  end
+
+  def test_variable
+    v = DeltaRed::variable
+    assert DeltaRed::Variable === v
+    assert_equal nil, v.value
+    v = DeltaRed::Variable.new(3)
+    assert DeltaRed::Variable === v
+    assert_equal 3, v.value
   end
 
   def test_variables
