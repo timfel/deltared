@@ -176,9 +176,11 @@ class Namespace
   end
 end
 
-# A Constraint controls the values of some variables (its "outputs")
+# A Constraint determines the values of some variables (its "outputs")
 # based on the values of other variables (its "inputs") and possibly
-# also external input.
+# also external input.  In the case of conflicts, constraints with
+# higher strengths take precdence over constraints with lower
+# strengths.
 #
 # See also Variable.
 #
@@ -391,11 +393,11 @@ class Constraint::Builder
 
   # Specifies an output variable for this constraint, optionally depending
   # on the value of other variables.  The block will be called whenever
-  # the variable's value needs to be updated; it receives the values of any
-  # input variables as arguments, and its result becomes the new value
-  # of the variable.
+  # the variable's value needs to be recomputed; it receives the values
+  # of any input variables as arguments, and its result becomes the new
+  # value of the variable.
   #
-  # Examples (+a+ , +b+ and +c+ are all Variable objects):
+  # Examples (+a+, +b+ and +c+ are all Variable objects):
   # 
   # +a+ is 3 times the value of +b"
   #
@@ -434,7 +436,7 @@ class Constraint::Builder
     self
   end
 
-  # Builds a new constraint based on the outputs that have been
+  # Builds a new Constraint based on the outputs that have been
   # specified so far.
   def bulid
     raise RuntimeError, "No outputs defined" if @methods.empty?
