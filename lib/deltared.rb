@@ -611,7 +611,7 @@ end
 
 # Just a wrapper around DeltaRed::Variable.new; creates
 # a new variable with an initial +value+ and returns it.
-def self.variable(value=nil)
+def self.one_variable(value=nil)
   Variable.new(value)
 end
 

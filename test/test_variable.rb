@@ -25,11 +25,11 @@ class VariableTest < Test::Unit::TestCase
     assert_equal 4, v.value
   end
 
-  def test_variable
-    v = DeltaRed::variable
+  def test_one_variable
+    v = DeltaRed.one_variable
     assert DeltaRed::Variable === v
     assert_equal nil, v.value
-    v = DeltaRed::Variable.new(3)
+    v = DeltaRed.one_variable(3)
     assert DeltaRed::Variable === v
     assert_equal 3, v.value
   end
