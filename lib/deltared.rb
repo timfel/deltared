@@ -515,9 +515,15 @@ class UserMethod #:nodoc:
 end
 
 # A Plan provides an optimized way to recompute volatile constraints.
-# Plans remain valid until a constraint is enabled or disabled,
-# after which they must be discarded and new Plans generated in order
-# to get correct updates.
+# Plans remain valid until a constraint reachable from the plan (i.e.
+# any constraint which is connected to the plan's constraints or
+# variables by other constraints) is enabled or disabled, after which
+# any old plans must be discarded and new plans generated in order
+# to continue producing correct updates.
+#
+# Note that, since it is effectively adding and removing a constraint,
+# setting variables with Variable#value= can also potentially disturb
+# a plan if they are part of the same constraint "network" as the plan.
 #
 class Plan
   class << self
