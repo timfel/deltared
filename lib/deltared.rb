@@ -182,6 +182,9 @@ end
 # higher strengths take precdence over constraints with lower
 # strengths.
 #
+# New constraints are initially disabled, and must be enabled with
+# Constraint#enable before they will have an effect.
+#
 # See also Variable.
 #
 class Constraint
