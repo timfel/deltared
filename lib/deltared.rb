@@ -60,7 +60,7 @@ WEAKEST  = 0 # the weakest constraint strength
 # the values of different variables can be enforced by 
 # creating Constraint objects referencing those variables.
 #
-# Variables can be created via Variable.new or DeltaRed.variable.
+# Variables can be created via Variable.new or DeltaRed.variables.
 #
 class Variable
   attr_reader   :value         # the variable's current value
@@ -553,10 +553,40 @@ def self.constraint(strength=STRONG, external_input=false)
   Constraint.new(strength, external_input) { |builder| yield builder }
 end
 
-# Creates and returns a new Variable.  A wrapper around
-# Variable.new.
-def self.variable
-  Variable.new
+# Creates +count+ new variables.  If a block is provided, the
+# new variables are passed to the block as arguments, and an
+# explicit count is not normally then required; a new variable
+# will be provided for every block argument.
+#
+# See Variable.
+#
+# Examples:
+#
+#  a, b, c = DeltaRed.variables(3)
+#  # a, b, and c are new Variable objects
+#
+#  DeltaRed.variables do |a, b, c|
+#    # a, b, and c are new Variable objects
+#  end
+#
+def self.variables(count=nil, &block)
+  if block
+    if count
+      raise ArgumentError, "Too many variables" if count > block.arity
+    else
+      count = block.arity
+      raise ArgumentError, "Number of variables not specified" if count < 0
+    end
+  else
+    raise ArgumentError, "Number of variables not specified" unless count
+    raise ArgumentERror, "Count is negative" if count < 0
+  end
+  variables = (0...count).map { Variable.new }
+  if block
+    block.call *variables
+  else
+    variables
+  end
 end
 
 end
