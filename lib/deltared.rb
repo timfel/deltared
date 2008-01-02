@@ -53,6 +53,7 @@ class Variable
   attr_accessor :walk_strength #:nodoc:
   attr_accessor :stay          #:nodoc:
   attr_writer   :mark	       #:nodoc:
+  send :alias_method, :__value__=, :value=
   send :alias_method, :mark, :mark=
   undef mark=
   send :alias_method, :stay?, :stay
@@ -64,6 +65,7 @@ class Variable
     @walk_strength = WEAKEST
     @mark = nil
     @stay = true
+    @edit_constraint = nil
   end
 
   def remove_propagate_from #:nodoc:
@@ -95,6 +97,16 @@ class Variable
 
   def marked?(mark) #:nodoc:
     @mark.eql? mark
+  end
+
+  def value=(value)
+    unless @edit_constraint
+      @edit_constraint = Constraint.new([self], REQUIRED, false, [EditMethod.new(self, value)])
+    else
+      @edit_constraint.methods.first.value = value
+    end
+    @edit_constraint.enable.disable
+    value
   end
 end
 
@@ -184,7 +196,7 @@ class Constraint
     weakest_strength = @strength
     for method in @methods
       output = method.output
-      if output.mark != mark and output.walk_strength < weakest_strength
+      if not output.marked? mark and output.walk_strength < weakest_strength
         weakest_strength = output.walk_strength
         weakest_method = method
       end
@@ -288,7 +300,6 @@ class Constraint::Builder
       output = args
       inputs = []
     end
-    @external_input ||= inputs.empty?
     @variables.add output
     @variables.merge inputs
     @methods.push UserMethod.new(output, inputs, code)
@@ -321,6 +332,26 @@ module Method #:nodoc:
   end
 end
 
+class EditMethod #:nodoc:
+  include Method
+  attr_reader :output
+  attr_accessor :value
+
+  def initialize(output, value)
+    @output = output
+    @value = value
+  end
+
+  def execute
+    @output.__value__ = @value
+    self
+  end
+
+  def substitute(map)
+    EditMethod.new(map[@output] || @output, value)
+  end
+end
+
 class UserMethod #:nodoc:
   include Method
   attr_reader :output
@@ -332,7 +363,7 @@ class UserMethod #:nodoc:
   end
 
   def execute
-    @output.value = @code.call *@inputs.map { |i| i.value }
+    @output.__value__ = @code.call *@inputs.map { |i| i.value }
     self
   end
 
@@ -378,7 +409,7 @@ class Plan
       constraint = hot.find { true }
       hot.delete constraint
       output = constraint.enforcing_method.output
-      if output.mark != mark and constraint.inputs_known?(mark)
+      if not output.marked? mark and constraint.inputs_known?(mark)
         @plan.push constraint
         output.mark mark
         hot.merge output.consuming_constraints
