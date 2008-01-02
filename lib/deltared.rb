@@ -420,7 +420,7 @@ class Constraint::Builder
       raise ArgumentError, "Multiple formulae per variable are not supported"
     end
     unless @methods.all? { |m| m.inputs.include? output } and
-           inputs.to_set.subset? @outputs
+           @outputs.subset? inputs.to_set
       raise ArgumentError, "Independent outputs are not supported"
     end
     if code.arity >= 0 and inputs.size != code.arity
