@@ -347,6 +347,9 @@ class Constraint
   private :output_walk_strength #:nodoc:
 end
 
+# Constraint builders are used to construct user-generated constraints
+# by calling formula to define output variables and then build to build
+# the corresponding constraint.
 class Constraint::Builder
   def initialize(strength=MEDIUM)
     @methods = []
