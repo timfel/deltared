@@ -471,9 +471,13 @@ class UserMethod #:nodoc:
   end
 end
 
-# A Plan provides an optimized way to recompute variables without enabling
-# or disabling constraints.  A Plan remains valid only until a constraint
-# is changed.
+# A Plan provides an optimized way to recompute the values of variables
+# without enabling or disabling constraints.  This is normally only necessary
+# for variables whose values are determined by external input constraints.
+#
+# A Plan remains valid only until a constraint is enabled or disabled,
+# at which time it is necessary to generate a new plan to get correct
+# updates.
 #
 class Plan
   class << self
