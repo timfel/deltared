@@ -70,10 +70,12 @@ class Variable
   attr_accessor :walk_strength #:nodoc:
   attr_accessor :stay          #:nodoc:
   attr_writer   :mark	       #:nodoc:
+
+  # hide from rdoc
   send :alias_method, :__value__=, :value=
   send :alias_method, :mark, :mark=
-  undef mark=
   send :alias_method, :stay?, :stay
+  undef mark=
 
   # Creates a new constraint variable with an initial +value+ (or
   # +nil+ if none is provided).
@@ -539,7 +541,8 @@ class Plan
     self
   end
 
-  NULL_PLAN = Plan.null #:nodoc:
+  # hide from rdoc
+  send :const_set, :NULL_PLAN, Plan.null
 end
 
 # Uses a Constraint::Builder to build a new Constraint; call
