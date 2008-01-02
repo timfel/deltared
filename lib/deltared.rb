@@ -125,16 +125,17 @@ class Variable
   end
 
   # Sets the variable to a specific +value+ and propagates
-  # it with a strength of +REQUIRED+; conceptually, this
-  # creates a constant-value constraint and briefly enables
-  # it to force the variable's value to the desired value
+  # it with a strength of +REQUIRED+; conceptually (and actually,
+  # for the moment), this creates a constant-value constraint and
+  # briefly enables it to force the variable's value to the desired
+  # value.
   def value=(value)
     unless @edit_constraint
-      edit_method = EditMethod.new(self, value)
+      @edit_method = EditMethod.new(self, value)
       @edit_constraint = Constraint.__new__([self], REQUIRED,
-                                            false, [edit_method])
+                                            false, [@edit_method])
     else
-      @edit_constraint.methods.first.value = value
+      @edit_method.value = value
     end
     @edit_constraint.enable.disable
     value
@@ -190,7 +191,6 @@ class Constraint
   # boolean indicating whether the constraint's outputs are determined
   # by anything besides its input variables (for example, user input)
   attr_reader :external_input
-  attr_reader :methods          #:nodoc:
   attr_reader :enforcing_method #:nodoc:
   alias external_input? external_input
   alias enabled? enabled
@@ -228,13 +228,14 @@ class Constraint
 
   # Creates a copy of this constraint with its variables replaced with
   # other variables as specified by +map+.  This is useful if you want
-  # to create a single constraint to use as a "template" for creating
-  # other constraints over different variables.
+  # to use a constraint as a "template" for creating other constraints
+  # over different variables.
   #
   # Returns the new constraint.
+  #
   def substitute(map)
-    variables = variables.map { |v| map[v] || v }.uniq
-    methods = methods.map { |m| m.substitute(map) }
+    variables = @variables.map { |v| map[v] || v }.uniq
+    methods = @methods.map { |m| m.substitute(map) }
     Constraint.__new__(variables, @strength, @external_input, methods)
   end
 
