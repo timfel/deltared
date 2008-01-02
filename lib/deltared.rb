@@ -93,31 +93,39 @@ class Variable
 end
 
 class Constraint
+  attr_reader :enabled
   attr_reader :variables
   attr_reader :strength
   attr_reader :external_input
-  attr_reader :methods
+  attr_reader :methods          #:nodoc:
   attr_reader :enforcing_method #:nodoc:
 
   alias external_input? external_input
+  alias enabled? enabled
 
-  def initialize(strength, *methods)
-    raise ArgumentError, "No methods specified" if methods.empty?
-    @variables = methods.map { |m|
-      [ m.output, *m.inputs ]
-    }.flatten.uniq.freeze
+  def initialize(variables, strength, external_input, methods) #:nodoc:
+    @variables = variables.freeze
     @strength = strength
-    @external_input = methods.any? { |m| m.external_input? }
+    @external_input = external_input
     @methods = methods.freeze
     @enforcing_method = nil
+    @enabled = false
   end
 
-  def add
+  def substitute(map)
+    variables = variables.map { |v| map[v] || v }.uniq
+    methods = methods.map { |m| m.substitute(map) }
+    Constraint.new(variables, @strength, external_input, methods)
+  end
+
+  def enable
+    return @self if @enabled
     @enforcing_method = nil
     for variable in @variables
       variable.constraints.add self
     end
     incremental_add
+    @enabled = true
     self
   end
 
@@ -184,7 +192,8 @@ class Constraint
     self
   end
 
-  def remove
+  def disable
+    return self unless @enabled
     if @enforcing_method
       incremental_remove
     else
@@ -192,6 +201,7 @@ class Constraint
         variable.constraints.delete self
       end
     end
+    @enabled = false
     self
   end
 
@@ -242,35 +252,78 @@ class Constraint
   private :output_walk_strength #:nodoc:
 end
 
-EXTERNAL = Object.new
-class << EXTERNAL #:nodoc:
-  def to_s ; "DeltaRed::EXTERNAL" ; end
-  alias inspect to_s
+class Constraint::Builder
+  def initialize(strength=MEDIUM, external_input=false)
+    @methods = []
+    @variables = Set.new
+    @strength = strength
+    @external_input = !!external_input
+  end
+
+  def compute(args, &code)
+    raise ArgumentError, "Block expected" unless code
+    case args
+    when Hash
+      raise ArgumentError, "Multiple output variables not allowed" if args.size > 1
+      raise ArgumentError, "No output variable given" if args.empty?
+      output = args.keys[0]
+      inputs = Array(args[output])
+    else
+      output = args
+      inputs = []
+    end
+    @external_input ||= inputs.empty?
+    @variables.add output
+    @variables.merge inputs
+    @methods.push UserMethod.new(output, inputs, code)
+    self
+  end
+
+  def bulid #:nodoc:
+    raise RuntimeError, "No outputs defined" if @methods.empty?
+    Constraint.new(@variables.to_a, strength, @external_input, @methods.dup)
+  end
 end
 
-class Method
-  attr_reader :output
-  attr_reader :inputs
-  attr_reader :external_input
-  alias external_input? external_input
+def Constraint.build(strength=MEDIUM, external_input=false)
+  builder = Constraint::Builder.new(strength, external_input)
+  yield builder
+  builder.build
+end
 
-  def initialize(output, *inputs, &code)
-    raise ArgumentError, "Block expected" unless code
+module Method #:nodoc:
+  def output
+    raise NotImplementedError, "#{self.class}#output not implemented"
+  end
+
+  def execute
+    raise NotImplementedError, "#{self.class}#execute not implemented"
+  end
+
+  def substitute(map)
+    raise NotImplementedError, "#{self.class}#substitute not implemented"
+  end
+end
+
+class UserMethod #:nodoc:
+  include Method
+  attr_reader :output
+
+  def initialize(output, inputs, code)
     @output = output
     @inputs = inputs
-    if inputs.first == EXTERNAL
-      @external_input = true
-      @inputs.shift
-    else
-      @external_input = inputs.empty?
-    end
-    @inputs.freeze
     @code = code
   end
 
-  def execute #:nodoc:
+  def execute
     @output.value = @code.call *@inputs.map { |i| i.value }
     self
+  end
+
+  def substitute(map)
+    output = map[@output] || @output
+    inputs = @inputs.map { |i| map[i] || i }
+    UserMethod.new(output, inputs, @code)
   end
 end
 
@@ -310,7 +363,7 @@ class Plan
       hot.delete constraint
       output = constraint.enforcing_method.output
       if output.mark != mark and constraint.inputs_known?(mark)
-        @plan << constraint
+        @plan.push constraint
         output.mark = mark
         hot.merge output.consuming_constraints
       end
