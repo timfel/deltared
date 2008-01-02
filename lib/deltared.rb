@@ -115,7 +115,7 @@ class Constraint
   def substitute(map)
     variables = variables.map { |v| map[v] || v }.uniq
     methods = methods.map { |m| m.substitute(map) }
-    Constraint.new(variables, @strength, external_input, methods)
+    Constraint.new(variables, @strength, @external_input, methods)
   end
 
   def enable
