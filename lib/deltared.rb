@@ -248,7 +248,6 @@ class Constraint
       nil
     end
   end
-  private :enforce #:nodoc:
 
   def unenforce #:nodoc:
     @enforcing_method = nil
@@ -452,7 +451,7 @@ class Constraint::Builder
     raise RuntimeError, "No outputs defined" if @methods.empty?
     variables = @outputs.dup
     @methods.each { |m| variables.merge m.inputs }
-    Constraint.__new__(varaibles.to_a, strength, @volatile, @methods.dup)
+    Constraint.__new__(variables.to_a, @strength, @volatile, @methods.dup)
   end
 end
 
