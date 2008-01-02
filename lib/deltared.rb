@@ -56,11 +56,9 @@ MEDIUM   = 2
 WEAK     = 1
 WEAKEST  = 0 # the weakest constraint strength
 
-# Variables are holders for values.  Relationships between
-# the values of different variables can be enforced by 
-# creating Constraint objects referencing those variables.
+# Variables have values which may be determined by constraints.
 #
-# Variables can be created via Variable.new or DeltaRed.variables.
+# See also Constraint.
 #
 class Variable
   attr_reader   :value         # the variable's current value
@@ -78,7 +76,7 @@ class Variable
   undef mark=
 
   # Creates a new constraint variable with an initial +value+ (or
-  # +nil+ if none is provided).
+  # +nil+ if none is provided).  See also DeltaRed.variables.
   def initialize(value=nil)
     @value = value
     @constraints = Set.new
@@ -109,10 +107,9 @@ class Variable
     unenforced.to_a.sort! { |a, b| b.strength <=> a.strength }
   end
 
-  # Recomputes the variable's value if its value is determined by
-  # external input.
+  # Recomputes the variable's value and returns +self+.
   def recompute
-    Plan.new_from_variables(self).execute
+    Plan.new_from_variables(self).execute unless @constraints.empty?
     self
   end
 
@@ -126,10 +123,9 @@ class Variable
     @mark.eql? mark
   end
 
-  # Sets the variable to a specific +value+ and propagates
-  # it with a strength of +REQUIRED+; conceptually, this creates a
-  # constant-value constraint on the variable and briefly enables it
-  # in order to force the variable to the desired value.
+  # Sets the variable to a specific +value+.  Conceptually, this briefly
+  # enables a constant-value constraint on the variable with a strength of
+  # +REQUIRED+ in order to force the variable to the desired value.
   #
   def value=(value)
     if @constraints.empty?
@@ -154,8 +150,11 @@ end
 # higher strengths take precdence over constraints with lower
 # strengths.
 #
-# New constraints are initially disabled, and must be enabled with
-# Constraint#enable before they will have an effect.
+# A constraint may be created using a Constraint::Builder, typically
+# by calling DeltaRed.constraint.
+#
+# Newly created constraints are disabled, and must be enabled by
+# calling Constraint#enable before they will have an effect.
 #
 # See also Variable.
 #
@@ -163,7 +162,8 @@ class Constraint
   attr_reader :enabled   # whether this constraint is currently enabled
   attr_reader :variables # the input and output variables for this constraint
   # the strength of this constraint, generally a value between
-  # WEAKEST and REQUIRED
+  # WEAKEST and REQUIRED (options are: WEAKEST, WEAK, MEDIUM, STRONG
+  # and REQUIRED)
   attr_reader :strength
   # boolean indicating whether the constraint's outputs are determined
   # by anything besides its input variables (for example, user input)
@@ -174,24 +174,12 @@ class Constraint
 
   class << self
     send :alias_method, :__new__, :new
-    # Uses a Constraint::Builder to build a new Constraint; call
-    # Constraint::Builder#compute on the yielded +builder+ to
-    # specify how each output variable is computed.
-    #
-    # +strength+ is the strength of the new constraint, and
-    # +external_input+ is a boolean indicating whether any of the
-    # constraint's outputs can be affected by anything besides
-    # the values of its inputs.
-    #
-    # See also DeltaRed.constraint.
-    #
-    def build(strength=MEDIUM, external_input=false)
+    def new(strength=MEDIUM)
       raise ArgumentError, "No block given" unless block_given?
-      builder = Builder.new(strength, external_input)
+      builder = Builder.new(strength)
       yield builder
       builder.build
     end
-    alias new build
   end
 
   def initialize(variables, strength, external_input, methods) #:nodoc:
@@ -216,7 +204,8 @@ class Constraint
     Constraint.__new__(variables, @strength, @external_input, methods)
   end
 
-  # Enables this constraint, adjusting the values of any variables as needed.
+  # Enables this constraint, recomputing the values of any variables as needed,
+  # and returns +self+.
   def enable
     return @self if @enabled
     @enforcing_method = nil
@@ -290,7 +279,8 @@ class Constraint
     self
   end
 
-  # Disables this constraint, adjusting the values of any variables as needed.
+  # Disables this constraint, recomputing the values of any variables as needed,
+  # and returns +self+.
   def disable
     return self unless @enabled
     if @enforcing_method
@@ -334,8 +324,7 @@ class Constraint
     self
   end
 
-  # Recomputes the constraint's outputs if the constraint
-  # uses external input.
+  # Recomputes the constraint's output variables and returns +self+.
   def recompute
     Plan.new_from_constraints(self).execute
     self
@@ -359,45 +348,60 @@ class Constraint
 end
 
 class Constraint::Builder
-  def initialize(strength=MEDIUM, external_input=false)
+  def initialize(strength=MEDIUM)
     @methods = []
-    @variables = Set.new
+    @outputs = Set.new
     @strength = strength
-    @external_input = !!external_input
+    @external_input = false
   end
 
-  # Specifies an output variable for this constraint, optionally depending
-  # on the value of other variables.  The block will be called whenever
-  # the variable's value needs to be recomputed; it receives the values
-  # of any input variables as arguments, and its result becomes the new
-  # value of the variable.
+  # Defines an output variable for this constraint, optionally depending
+  # on the value of other variables.  The block specifies a formula which
+  # will be evaluated whenever the variable's value needs to be recomputed;
+  # it receives the values of any input variables as arguments, and its
+  # result becomes the new value of the variable.
+  #
+  # Because the block is only called when its input change, the formula
+  # should be "pure": its result should not depend on anything but its
+  # inputs.  Formulae which depend on other things (e.g. user input)
+  # and need to be called more often should be defined using formula!
+  # instead.
+  #
+  # Multiple output variables may be defined through multiple calls to
+  # compute, but only if they take each other's value as inputs (and actually
+  # use them!).  Independent output variables are not supported at this time.
+  #
+  # Returns +self+.
   #
   # Examples (+a+, +b+ and +c+ are all Variable objects):
   # 
-  # +a+ is 3 times the value of +b"
+  # +a+ is 3 times the value of +b+
   #
-  #  builder.compute(a => b) { |b_value| b_value * 3 }
+  #  builder.formula(a => b) { |b_value| b_value * 3 }
   # 
   # +a+ is the sum of the values of +b+ and +c+
   #
-  #  builder.compute(a => [ b, c ]) do |b_value, c_value|
-  #   b_value + c_value
+  #  builder.formula(a => [ b, c ]) do |b_value, c_value|
+  #    b_value + c_value
   #  end
   #
   # +a+ is fixed at 30 (unless a stronger constraint overrides)
   #
-  #  builder.compute(a) { 30 }
+  #  builder.formula(a) { 30 }
   #
-  # +a+ is determined by the current mouse position -- note that
-  # external_input should be set for this constraint!
+  # +a+ is determined by the current mouse position -- note the
+  # use of formula! instead of formula, since the output can
+  # change independently of any input variables.
   #
-  #  builder.compute(a) { window.mouse_x }
+  #  builder.formula!(a) { window.mouse_x }
   #
-  def compute(args, &code) #:yields:*values
+  def formula(args, &code) #:yields:*values
     raise ArgumentError, "Block expected" unless code
     case args
     when Hash
-      raise ArgumentError, "Multiple output variables not allowed" if args.size > 1
+      if args.size > 1
+        raise ArgumentError, "Multiple output variables not allowed"
+      end
       raise ArgumentError, "No output variable given" if args.empty?
       output = args.keys[0]
       inputs = Array(args[output])
@@ -405,17 +409,39 @@ class Constraint::Builder
       output = args
       inputs = []
     end
-    @variables.add output
-    @variables.merge inputs
+    if @outputs.include output
+      raise ArgumentError, "Multiple formulae per variable are not supported"
+    end
+    unless @methods.all? { |m| m.inputs.include? output } and
+           inputs.to_set.subset? @outputs
+      raise ArgumentError, "Independent outputs are not supported"
+    end
+    if code.arity >= 0 and inputs.size != code.arity
+      raise ArgumentError, "Number of inputs must match block arity"
+    end
+    @outputs.add output
     @methods.push UserMethod.new(output, inputs, code)
     self
   end
 
-  # Builds a new Constraint based on the outputs that have been
-  # specified so far.
+  # Like formula, but defines a formula whose output may change independently
+  # of its input variables.  The main difference is that it will get called
+  # in response to manual recompute requests, in addition to getting called
+  # when its inputs change.  Returns +self+.
+  def formula!(args, &code)
+    formula(args, &code)
+    @external_input = true
+    self
+  end
+
+  # Builds a new Constraint based on the formulae specified so far.  The
+  # constraint must be enabled with Constraint#enable before it has an
+  # effect.
   def bulid
     raise RuntimeError, "No outputs defined" if @methods.empty?
-    Constraint.__new__(@variables.to_a, strength, @external_input, @methods.dup)
+    variables = @outputs.dup
+    @methods.each { |m| variables.merge m.inputs }
+    Constraint.__new__(varaibles.to_a, strength, @external_input, @methods.dup)
   end
 end
 
@@ -456,6 +482,7 @@ end
 class UserMethod #:nodoc:
   include Method
   attr_reader :output
+  attr_reader :inputs
 
   def initialize(output, inputs, code)
     @output = output
@@ -491,8 +518,7 @@ class Plan
       new([])
     end
 
-    # Creates and returns an update Plan for updating the given variables
-    # and any variables which depend on them.
+    # Creates and returns a Plan for recomputing the given variables.
     def new_from_variables(*variables)
       sources = Set.new
       for variable in variables
@@ -509,7 +535,7 @@ class Plan
       end
     end
 
-    # Creates and returns an update Plan for updating variables influenced
+    # Creates and returns a Plan for recomputing variables determined
     # by the given constraints.
     def new_from_constraints(*constraints)
       sources = Set.new
@@ -542,9 +568,8 @@ class Plan
     end
   end
 
-  # Executes the update plan, recomputing the output values of the
-  # any variables affected by the plan.
-  def execute
+  # Recomputes the variables covered by this plan and returns +self+.
+  def recompute
     @plan.each { |method| method.execute }
     self
   end
@@ -554,20 +579,25 @@ class Plan
 end
 
 # Uses a Constraint::Builder to build a new Constraint; call
-# Constraint::Builder#compute on the yielded +builder+ to
-# specify how each output variable is computed.
+# Constraint::Builder#formula on the yielded +builder+ to
+# specify how each output variable is computed.  Constraints 
+# must be enabled before they have an effect.  Returns the
+# new constraint.
 #
-# This method is a wrapper around Constraint.build.
+# See also Constraint::Builder and Constraint#enable.
 #
-def self.constraint(strength=STRONG, external_input=false)
+def self.constraint(strength=MEDIUM)
   raise ArgumentError, "No block given" unless block_given?
-  Constraint.new(strength, external_input) { |builder| yield builder }
+  Constraint.new(strength) { |builder| yield builder }
 end
 
 # Creates +count+ new variables.  If a block is provided, the
 # new variables are passed to the block as arguments, and an
 # explicit count is not normally then required; a new variable
 # will be provided for every block argument.
+#
+# Returns the result of the block if a block is given, otherwise
+# it returns the created variables.
 #
 # See Variable.
 #
