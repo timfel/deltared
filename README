@@ -21,11 +21,11 @@ how to update them.
  b.value = 2
  p a.value # => 4
 
-This is like a Rake rule: it declares that <tt>a.value</tt> depends on
-<tt>b.value</tt>.  When <tt>b.value</tt> is set to some value, DeltaRed
-knows to update <tt>a.value</tt>, and like Rake, the block attached to the
-rule tells it how to do that (in this case, <tt>a.value</tt> is obtained by
-multiplying <tt>b.value</tt> -- which DeltaRed helpfully passed to the
+The above constraint is like a Rake rule: it declares that <tt>a.value</tt>
+depends on <tt>b.value</tt>.  When <tt>b.value</tt> is set to some value,
+DeltaRed knows to update <tt>a.value</tt>, and like Rake, the block attached
+to the rule tells it how to do that (in this case, <tt>a.value</tt> is obtained
+by multiplying <tt>b.value</tt> -- which DeltaRed helpfully passed to the
 block -- by 2).
 
 Now, one difference between Rake and DeltaRed is that Rake is a
