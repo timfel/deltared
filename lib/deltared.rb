@@ -101,7 +101,8 @@ class Variable
     unenforced.to_a.sort! { |a, b| b.strength <=> a.strength }
   end
 
-  # Recomputes the variable's value and returns +self+.
+  # Recomputes the variable's value and returns +self+.  Really only
+  # useful if this variable is directly determined by a volatile constraint.
   def recompute
     Plan.new_from_variables(self).recompute unless @constraints.empty?
     self
@@ -139,20 +140,22 @@ class Variable
     value
   end
 
-  def inspect
+  def inspect #:nodoc:
     "#<DeltaRed::Variable object_id=#{object_id} value=#{@value.inspect}>"
   end
-  alias to_s inspect
+  send :alias_method, :to_s, :inspect
 end
 
 # A Constraint determines the values of some variables (its "outputs")
 # based on the values of other variables (its "inputs") and possibly
 # also external input.  In the case of conflicts, constraints with
 # higher strengths take precdence over constraints with lower
-# strengths.  Constraints can be either volatile or non-volatile,
-# depending on whether they take input from sources outside the
-# constraint system.  Non-volatile constraints can be more heavily
-# optimized since they do not need to be recomputed all the time.
+# strengths.
+#
+# Constraints can be either <em>volatile</em> or <em>non-volatile</em>,
+# depending on whether they take input from sources outside the constraint
+# system.  Non-volatile constraints have less overhead since they do not
+# need to be recomputed all the time.
 #
 # A constraint may be created using a Constraint::Builder, typically
 # by calling DeltaRed.constraint.  Newly created constraints are
@@ -329,7 +332,8 @@ class Constraint
     self
   end
 
-  # Recomputes the constraint's output variables and returns +self+.
+  # Recomputes the constraint's output variables and returns +self+.  Really
+  # only useful if this constraint is volatile.
   def recompute
     Plan.new_from_constraints(self).recompute
     self
@@ -351,10 +355,10 @@ class Constraint
   end
   private :output_walk_strength #:nodoc:
 
-  def inspect
+  def inspect #:nodoc:
     "#<DeltaRed::Constraint object_id=#{object_id} variables=#{@variables.inspect} enabled=#{@enabled.inspect}>"
   end
-  alias to_s inspect
+  send :alias_method, :to_s, :inspect
 end
 
 # Constraint builders are used to construct user-generated constraints
@@ -378,7 +382,7 @@ class Constraint::Builder
   # should be "pure": its result should not depend on anything but its
   # inputs.  Formulae which depend on other things (e.g. user input)
   # and need to be called more often should be defined using formula!
-  # instead.
+  # instead, and will make the created constraint volatile.
   #
   # Multiple output variables may be defined through multiple calls to
   # compute, but only if they take each other's value as inputs (and actually
@@ -441,6 +445,7 @@ class Constraint::Builder
   # of its input variables.  The main difference is that it will get called
   # in response to manual recompute requests, in addition to getting called
   # when its inputs change.  The resulting constraint will be volatile.
+  #
   # Returns +self+.
   #
   # See Constraint#volatile?
@@ -461,10 +466,10 @@ class Constraint::Builder
     Constraint.__new__(variables.to_a, @strength, @volatile, @methods.dup)
   end
 
-  def inspect
+  def inspect #:nodoc:
     "#<DeltaRed::Constraint::Builder object_id=#{object_id}>"
   end
-  alias to_s inspect
+  send :alias_method, :to_s, :inspect
 end
 
 module Method #:nodoc:
@@ -602,10 +607,10 @@ class Plan
   # hide from rdoc
   send :const_set, :NULL_PLAN, Plan.null
 
-  def inspect
+  def inspect #:nodoc:
     "#<DeltaRed::Plan object_id=#{object_id}>"
   end
-  alias to_s inspect
+  send :alias_method, :to_s, :inspect
 end
 
 # Uses a Constraint::Builder to build a new Constraint; call
