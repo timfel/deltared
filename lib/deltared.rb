@@ -202,7 +202,7 @@ class Constraint
     # specify how each output variable is computed.
     #
     # +strength+ is the strength of the new constraint, and
-    # +external_input" is a boolean indicating whether any of the
+    # +external_input+ is a boolean indicating whether any of the
     # constraint's outputs can be affected by anything besides
     # the values of its inputs.
     #
