@@ -1,4 +1,4 @@
-# DeltaRed - an implementation of the DeltaBlue algorithm
+# DeltaRed - A multi-way constraint solver for Ruby
 #
 # Copyright 2007  MenTaLguY <mental@rydia.net>
 #
