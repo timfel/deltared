@@ -416,7 +416,7 @@ class Constraint::Builder
       output = args
       inputs = []
     end
-    if @outputs.include output
+    if @outputs.include? output
       raise ArgumentError, "Multiple formulae per variable are not supported"
     end
     unless @methods.all? { |m| m.inputs.include? output } and
