@@ -166,9 +166,10 @@ class Constraint
   attr_reader :strength
   # boolean indicating whether the constraint's outputs are determined
   # by anything besides its input variables (for example, user input)
-  attr_reader :external_input
+  # and can change at any time
+  attr_reader :volatile
   attr_reader :enforcing_method #:nodoc:
-  alias external_input? external_input
+  alias volatile? volatile
   alias enabled? enabled
 
   class << self
@@ -181,10 +182,10 @@ class Constraint
     end
   end
 
-  def initialize(variables, strength, external_input, methods) #:nodoc:
+  def initialize(variables, strength, volatile, methods) #:nodoc:
     @variables = variables.freeze
     @strength = strength
-    @external_input = external_input
+    @volatile = volatile
     @methods = methods.freeze
     @enforcing_method = nil
     @enabled = false
@@ -200,7 +201,7 @@ class Constraint
   def substitute(map)
     variables = @variables.map { |v| map[v] || v }.uniq
     methods = @methods.map { |m| m.substitute(map) }
-    Constraint.__new__(variables, @strength, @external_input, methods)
+    Constraint.__new__(variables, @strength, @volatile, methods)
   end
 
   # Enables this constraint, recomputing the values of any variables as needed,
@@ -330,7 +331,7 @@ class Constraint
   end
 
   def constant_output? #:nodoc:
-    not external_input? and inputs.all? { |v| v.stay? }
+    not volatile? and inputs.all? { |v| v.stay? }
   end
 
   def output_walk_strength #:nodoc:
@@ -351,7 +352,7 @@ class Constraint::Builder
     @methods = []
     @outputs = Set.new
     @strength = strength
-    @external_input = false
+    @volatile = false
   end
 
   # Defines an output variable for this constraint, optionally depending
@@ -426,10 +427,14 @@ class Constraint::Builder
   # Like formula, but defines a formula whose output may change independently
   # of its input variables.  The main difference is that it will get called
   # in response to manual recompute requests, in addition to getting called
-  # when its inputs change.  Returns +self+.
+  # when its inputs change.  The resulting constraint will be volatile.
+  # Returns +self+.
+  #
+  # See Constraint#volatile?
+  #
   def formula!(args, &code)
     formula(args, &code)
-    @external_input = true
+    @volatile = true
     self
   end
 
@@ -440,7 +445,7 @@ class Constraint::Builder
     raise RuntimeError, "No outputs defined" if @methods.empty?
     variables = @outputs.dup
     @methods.each { |m| variables.merge m.inputs }
-    Constraint.__new__(varaibles.to_a, strength, @external_input, @methods.dup)
+    Constraint.__new__(varaibles.to_a, strength, @volatile, @methods.dup)
   end
 end
 
@@ -501,13 +506,10 @@ class UserMethod #:nodoc:
   end
 end
 
-# A Plan provides an optimized way to recompute the values of variables
-# without enabling or disabling constraints.  This is normally only necessary
-# for variables whose values are determined by external input constraints.
-#
-# A Plan remains valid only until a constraint is enabled or disabled,
-# at which time it is necessary to generate a new plan to get correct
-# updates.
+# A Plan provides an optimized way to recompute volatile constraints.
+# Plans remain valid until a constraint is enabled or disabled,
+# after which they must be discarded and new Plans generated in order
+# to get correct updates.
 #
 class Plan
   class << self
@@ -522,7 +524,7 @@ class Plan
       sources = Set.new
       for variable in variables
         for constraint in variable.constraints
-          if constraint.external_input? and constraint.enforcing_method
+          if constraint.volatile? and constraint.enforcing_method
             sources.add constraint
           end
         end
@@ -539,7 +541,7 @@ class Plan
     def new_from_constraints(*constraints)
       sources = Set.new
       for constraint in constraints
-        if constraint.external_input? and constraint.enforcing_method
+        if constraint.volatile? and constraint.enforcing_method
           sources.add constraint
         end
       end
@@ -598,10 +600,10 @@ def self.constraint!(strength=MEDIUM)
   Constraint.new(strength) { |builder| yield builder }.enable
 end
 
-# Creates +count+ new variables.  If a block is provided, the
-# new variables are passed to the block as arguments, and the
-# count isn't required: a new variable will be provided for
-# every block argument.
+# Creates new variable objects with the given initial +values+.
+# If a block is given, a new variable is created for every block
+# argument; if there are more arguments than default values,
+# the additional variables will be initialized to +nil+.
 #
 # Returns the result of the block if a block is given, otherwise
 # it returns the created variables as an Array.
@@ -610,26 +612,19 @@ end
 #
 # Examples:
 #
-#  a, b, c = DeltaRed.variables(3)
-#  # a, b, and c are new Variable objects
+#  a, b, c = DeltaRed.variables(1, 2, 3)
+#  # a, b, and c are new Variable objects with initial values 1, 2, and 3
 #
-#  DeltaRed.variables do |a, b, c|
-#    # a, b, and c are new Variable objects
+#  DeltaRed.variables(1, 2, 3) do |a, b, c, d|
+#    # a, b, and c are new Variable objects with initial values 1, 2, and 3
+#    # d is a new Variable object with the initial value nil
 #  end
 #
-def self.variables(count=nil, &block)
-  if block
-    if count
-      raise ArgumentError, "Too many variables" if count > block.arity
-    else
-      count = block.arity
-      raise ArgumentError, "Number of variables not specified" if count < 0
-    end
-  else
-    raise ArgumentError, "Number of variables not specified" unless count
-    raise ArgumentERror, "Count is negative" if count < 0
-  end
-  variables = (0...count).map { Variable.new }
+def self.variables(*values, &block)
+  count = values.size
+  count = block.arity if block and block.arity > values.size
+  variables = Array.new(count)
+  (0...count).zip(values) { |i, v| variables[i] = Variable.new(v) }
   if block
     block.call *variables
   else

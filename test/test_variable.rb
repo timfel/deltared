@@ -22,27 +22,24 @@ class VariableTest < Test::Unit::TestCase
   end
 
   def test_variables
-    vars = DeltaRed::variables(3)
-    assert_equal 3, vars.size
-    vars.uniq!
+    vars = DeltaRed::variables('a', 'b', 'c')
     assert_equal 3, vars.size
     assert vars.all? { |v| DeltaRed::Variable === v }
-  end
-
-  def test_variables_no_count
-    assert_raise(ArgumentError) do
-      DeltaRed::variables
-    end
+    vars.uniq!
+    assert_equal ['a', 'b', 'c'], vars.map { |v| v.value }
   end
 
   def test_variables_block
-    vars = DeltaRed::variables do |a, b, c|
-      [ a, b, c ]
+    vars = nil
+    result = DeltaRed::variables('a', 'b', 'c') do |a, b, c, d|
+      vars = [ a, b, c, d ]
+      "foo"
     end
-    assert_equal 3, vars.size
-    vars.uniq!
-    assert_equal 3, vars.size
+    assert_equal "foo", result
+    assert_equal 4, vars.size
     assert vars.all? { |v| DeltaRed::Variable === v }
+    vars.uniq!
+    assert_equal ['a', 'b', 'c', nil], vars.map { |v| v.value }
   end
 
   def test_trivial_recompute
