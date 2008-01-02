@@ -30,4 +30,24 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 6, a.value
     assert_equal 5, b.value
   end 
+
+  def test_one_way_chain
+    variables = (0..10).map { DeltaRed::Variable.new(0) }
+    head = variables.shift
+    variables.inject(head) do |prev, curr|
+      DeltaRed.constraint! do |c|
+        c.formula(curr => prev) { |v| v }
+      end
+      curr
+    end
+    variables.unshift head
+    variables.first.value = 10
+    assert variables.all? { |v| v.value == 10 }
+    variables.first.value = 3
+    assert variables.all? { |v| v.value == 3 }
+    variables[variables.size / 2].value = 49
+    assert variables.all? { |v| v.value == 3 }
+    variables.last.value = 22
+    assert variables.all? { |v| v.value == 3 }
+  end
 end
