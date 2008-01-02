@@ -587,11 +587,17 @@ end
 # Constraint::Builder#compute on the yielded +builder+ to
 # specify how each output variable is computed.
 #
-# This method is a wrapper for Constraint.build.
+# This method is a wrapper around Constraint.build.
 #
 def self.constraint(strength=STRONG, external_input=false)
   raise ArgumentError, "No block given" unless block_given?
   Constraint.new(strength, external_input) { |builder| yield builder }
+end
+
+# Creates and returns a new Variable.  A wrapper around
+# Variable.new.
+def self.variable
+  Variable.new
 end
 
 end
