@@ -58,7 +58,7 @@ class Variable
   undef mark=
   send :alias_method, :stay?, :stay
 
-  def initialize(value)
+  def initialize(value=nil)
     @value = value
     @constraints = Set.new
     @determined_by = nil
@@ -113,12 +113,26 @@ class Variable
 end
 
 class Namespace
+  include Enumerable
+
   def initialize
     @variables = {}
   end
 
   def [](name)
     @variables[name.to_sym] ||= Variable.new
+  end
+
+  def names
+    @variables.keys
+  end
+
+  def variables
+    @variables.values
+  end
+
+  def each
+    @variables.each { |k, v| yield k, v }
   end
 end
 
