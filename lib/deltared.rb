@@ -57,8 +57,7 @@ WEAK     = 1
 WEAKEST  = 0 # the weakest constraint strength
 
 # Variables have values which may be determined by constraints.
-#
-# See also Constraint.
+# See Constraint.
 #
 class Variable
   attr_reader   :value         # the variable's current value
@@ -591,13 +590,21 @@ def self.constraint(strength=MEDIUM)
   Constraint.new(strength) { |builder| yield builder }
 end
 
+# Like DeltaRed.constraint, but enables the new constraint
+# before returning it.
+#
+def self.constraint!(strength=MEDIUM)
+  raise ArgumentError, "No block given" unless block_given?
+  Constraint.new(strength) { |builder| yield builder }.enable
+end
+
 # Creates +count+ new variables.  If a block is provided, the
-# new variables are passed to the block as arguments, and an
-# explicit count is not normally then required; a new variable
-# will be provided for every block argument.
+# new variables are passed to the block as arguments, and the
+# count isn't required: a new variable will be provided for
+# every block argument.
 #
 # Returns the result of the block if a block is given, otherwise
-# it returns the created variables.
+# it returns the created variables as an Array.
 #
 # See Variable.
 #
