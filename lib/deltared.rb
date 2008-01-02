@@ -92,6 +92,16 @@ class Variable
   end
 end
 
+class Namespace
+  def initialize
+    @variables = {}
+  end
+
+  def [](name)
+    @variables[name.to_sym] ||= Variable.new
+  end
+end
+
 class Constraint
   attr_reader :enabled
   attr_reader :variables
