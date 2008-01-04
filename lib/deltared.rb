@@ -368,6 +368,9 @@ class Constraint::Builder
     @volatile = false
   end
 
+  # hide from rdoc
+  send :const_set, :NOOP_PROC, proc { |v| v }
+
   # Defines an output variable for this constraint, optionally depending
   # on the value of other variables.  The block specifies a formula which
   # will be evaluated whenever the variable's value needs to be recomputed;
@@ -429,7 +432,6 @@ class Constraint::Builder
   # should be expressed as two separate constraints instead.
   #
   def formula(args, &code) #:yields:*values
-    raise ArgumentError, "Block expected" unless code
     case args
     when Hash
       if args.size > 1
@@ -449,8 +451,16 @@ class Constraint::Builder
            @outputs.subset? inputs.to_set
       raise ArgumentError, "Independent outputs are not supported"
     end
-    if code.arity >= 0 and inputs.size != code.arity
-      raise ArgumentError, "Number of inputs must match block arity"
+    if code
+      if code.arity >= 0 and inputs.size != code.arity
+        raise ArgumentError, "Number of inputs must match block arity"
+      end
+    else
+      if inputs.size == 1
+        code = NOOP_PROC
+      else
+        raise ArgumentError, "Block expected" unless code
+      end
     end
     @outputs.add output
     @methods.push UserMethod.new(output, inputs, code)
