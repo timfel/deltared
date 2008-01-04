@@ -654,19 +654,16 @@ def self.constraint!(strength=MEDIUM)
   Constraint.new(strength) { |builder| yield builder }.enable
 end
 
-# Just a wrapper around DeltaRed::Variable.new; creates
-# a new variable with an initial +value+ and returns it.
-def self.one_variable(value=nil)
-  Variable.new(value)
-end
-
 # Creates new variable objects with the given initial +values+.
 # If a block is given, a new variable is created for every block
-# argument; if there are more arguments than default values,
-# the additional variables will be initialized to +nil+.
+# argument; if there are more block arguments than arguments to
+# DeltaRed.variable, the additional variables will be initialized
+# to +nil+.
 #
 # Returns the result of the block if a block is given, otherwise
-# it returns the created variables as an Array.
+# it returns the created variables as an Array (unless only one
+# variable is requested, in which case it just returns a single
+# variable).
 #
 # See Variable.
 #
@@ -674,6 +671,9 @@ end
 #
 #  a, b, c = DeltaRed.variables(1, 2, 3)
 #  # a, b, and c are new Variable objects with initial values 1, 2, and 3
+#
+#  x = DeltaRed.variables(42)
+#  # a is a new Variable object with initial value 42
 #
 #  DeltaRed.variables(1, 2, 3) do |a, b, c, d|
 #    # a, b, and c are new Variable objects with initial values 1, 2, and 3
@@ -683,10 +683,13 @@ end
 def self.variables(*values, &block)
   count = values.size
   count = block.arity if block and block.arity > values.size
+  raise ArgumentError, "No variables requested" if count.zero?
   variables = Array.new(count)
   (0...count).zip(values) { |i, v| variables[i] = Variable.new(v) }
   if block
     block.call *variables
+  elsif count == 1
+    variables.first
   else
     variables
   end

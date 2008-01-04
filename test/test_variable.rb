@@ -25,21 +25,24 @@ class VariableTest < Test::Unit::TestCase
     assert_equal 4, v.value
   end
 
-  def test_one_variable
-    v = DeltaRed.one_variable
-    assert DeltaRed::Variable === v
-    assert_equal nil, v.value
-    v = DeltaRed.one_variable(3)
-    assert DeltaRed::Variable === v
-    assert_equal 3, v.value
-  end
-
   def test_variables
     vars = DeltaRed::variables('a', 'b', 'c')
     assert_equal 3, vars.size
     assert vars.all? { |v| DeltaRed::Variable === v }
     vars.uniq!
     assert_equal ['a', 'b', 'c'], vars.map { |v| v.value }
+  end
+
+  def test_variables_none
+    assert_raise(ArgumentError) do
+      DeltaRed::variables()
+    end
+  end
+
+  def test_variables_single
+    v = DeltaRed.variables('x')
+    assert Variable === var
+    assert_equal 'x', v.value
   end
 
   def test_variables_block
