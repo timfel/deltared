@@ -60,13 +60,13 @@ class Variable
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
   attr_accessor :walk_strength #:nodoc:
-  attr_accessor :stay          #:nodoc:
+  attr_accessor :constant          #:nodoc:
   attr_writer   :mark	       #:nodoc:
 
   # hide from rdoc
   send :alias_method, :__value__=, :value=
   send :alias_method, :mark, :mark=
-  send :alias_method, :stay?, :stay
+  send :alias_method, :constant?, :constant
   undef mark=
 
   # Creates a new constraint variable with an initial +value+ (or
@@ -77,7 +77,7 @@ class Variable
     @determined_by = nil
     @walk_strength = WEAKEST
     @mark = nil
-    @stay = true
+    @constant = true
     @edit_constraint = nil
   end
 
@@ -85,7 +85,7 @@ class Variable
     unenforced = Set.new
     @determined_by = nil
     @walk_strength = WEAKEST
-    @stay = true
+    @constant = true
     todo = Set[self]
     until todo.empty?
       variable = todo.shift
@@ -93,7 +93,7 @@ class Variable
         unenforced.add constraint unless constraint.enforcing_method
       end
       for constraint in variable.consuming_constraints
-        constraint.compute
+        constraint.compute_incremental
         todo.add constraint.enforcing_method.output
       end
     end
@@ -280,7 +280,7 @@ class Constraint
         constraint.incremental_remove
         raise RuntimeError, "Cycle encountered"
       end
-      constraint.compute
+      constraint.compute_incremental
       todo.merge constraint.enforcing_method.output.consuming_constraints
     end
     self
@@ -320,13 +320,13 @@ class Constraint
   private :inputs #:nodoc:
 
   def inputs_known?(mark) #:nodoc:
-    inputs.all? { |v| v.marked? mark or v.stay? }
+    inputs.all? { |v| v.marked? mark or v.constant? }
   end
 
-  def compute #:nodoc:
+  def compute_incremental #:nodoc:
     output = @enforcing_method.output
     output.walk_strength = output_walk_strength
-    output.stay = !@volatile && inputs.all? { |v| v.stay? }
+    output.constant = !@volatile && inputs.all? { |v| v.constant? }
     # precompute volatile constraints too; better matches naive expectations
     @enforcing_method.execute
     self
