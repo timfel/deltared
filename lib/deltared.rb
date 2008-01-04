@@ -104,7 +104,7 @@ class Variable
   # Recomputes the variable's value and returns +self+.  Really only
   # useful if this variable is directly determined by a volatile constraint.
   def recompute
-    Plan.new_from_variables(self).recompute unless @constraints.empty?
+    Plan.new(self).recompute unless @constraints.empty?
     self
   end
 
@@ -335,7 +335,7 @@ class Constraint
   # Recomputes the constraint's output variables and returns +self+.  Really
   # only useful if this constraint is volatile.
   def recompute
-    Plan.new_from_constraints(self).recompute
+    Plan.new(self).recompute
     self
   end
 
@@ -569,47 +569,40 @@ end
 #
 class Plan
   class << self
-    private :new
+    send :alias_method, :private_new, :new
+    private :private_new
 
     def null #:nodoc:
-      new([])
+      private_new([])
     end
 
-    # Creates and returns a Plan for recomputing the given variables.
-    def new_from_variables(*variables)
+    def new(*seeds)
       sources = Set.new
-      for variable in variables
-        for constraint in variable.constraints
-          if constraint.volatile? and constraint.enforcing_method
-            sources.add constraint
+      for seed in seeds
+        case seed
+        when Variable
+          for constraint in seed.constraints
+            if constraint.volatile? and constraint.enforcing_method
+              sources.add constraint
+            end
           end
+        when Constraint
+          if seed.volatile? and seed.enforcing_method
+            sources.add seed
+          end
+        else
+          raise TypeError, "#{seed.inspect} is not a variable or a constraint"
         end
       end
       unless sources.empty?
-        new(sources)
-      else
-        NULL_PLAN
-      end
-    end
-
-    # Creates and returns a Plan for recomputing variables determined
-    # by the given constraints.
-    def new_from_constraints(*constraints)
-      sources = Set.new
-      for constraint in constraints
-        if constraint.volatile? and constraint.enforcing_method
-          sources.add constraint
-        end
-      end
-      unless sources.empty?
-        new(sources)
+        private_new(sources)
       else
         NULL_PLAN
       end
     end
   end
 
-  def initialize(sources) #:nodoc:
+  def initialize(sources) #:nodoc: :notnew:
     @plan = []
     mark = Mark.new
     hot = sources
@@ -659,6 +652,10 @@ end
 def self.constraint!(strength=MEDIUM)
   raise ArgumentError, "No block given" unless block_given?
   Constraint.new(strength) { |builder| yield builder }.enable
+end
+
+def self.plan_recompute(*seeds)
+  Plan.new(*seeds)
 end
 
 # Creates a new input variable (a variable with a volatile
