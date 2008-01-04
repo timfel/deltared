@@ -370,6 +370,7 @@ class Constraint::Builder
 
   # hide from rdoc
   send :const_set, :NOOP_PROC, proc { |v| v }
+  send :const_set, :SPLAT_PROC, proc { |*vs| vs }
 
   # Defines an output variable for this constraint, optionally depending
   # on the value of other variables.  The block specifies a formula which
@@ -459,7 +460,7 @@ class Constraint::Builder
       if inputs.size == 1
         code = NOOP_PROC
       else
-        raise ArgumentError, "Block expected" unless code
+        code = SPLAT_PROC
       end
     end
     @outputs.add output

@@ -33,6 +33,14 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 2, a.value
   end
 
+  def test_multiple_inputs_no_block
+    x, y, z = DeltaRed.variables(nil, 2, 3)
+    DeltaRed.constraint! do |c|
+      c.formula([y, z] => x)
+    end
+    assert_equal [2, 3], x.value
+  end
+
   def test_simple_one_way
     a, b = DeltaRed.variables(1, 1)
     DeltaRed.constraint! do |c|
