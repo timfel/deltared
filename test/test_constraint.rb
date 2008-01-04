@@ -124,4 +124,12 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 0, x.value
     assert_equal x.value, y.value + z.value
   end
+
+  def test_volatile_formula_makes_volatile
+    x = DeltaRed::Variable.new
+    constraint = DeltaRed.constraint do |c|
+      c.volatile_formula(x) { }
+    end
+    assert constraint.volatile?
+  end
 end

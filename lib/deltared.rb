@@ -167,15 +167,14 @@ end
 # See also Variable.
 #
 class Constraint
-  attr_reader :enabled   # whether this constraint is currently enabled
-  attr_reader :variables # the input and output variables for this constraint
+  # boolean indicating whether this constraint is currently enabled
+  attr_reader :enabled
+  attr_reader :variables #:nodoc:
   # the strength of this constraint, generally a value between
-  # WEAKEST and REQUIRED (options are: WEAKEST, WEAK, MEDIUM, STRONG
-  # and REQUIRED)
+  # DeltaRed::WEAKEST and DeltaRed::REQUIRED, inclusive (for instance:
+  # WEAKEST, WEAK, MEDIUM, STRONG or REQUIRED)
   attr_reader :strength
-  # boolean indicating whether the constraint's outputs are determined
-  # by anything besides its input variables (for example, user input)
-  # and can change at any time
+  # boolean indicating whether the constraint has volatile formulae
   attr_reader :volatile
   attr_reader :enforcing_method #:nodoc:
   alias volatile? volatile
@@ -381,8 +380,8 @@ class Constraint::Builder
   # Because the block is only called when its input change, the formula
   # should be "pure": its result should not depend on anything but its
   # inputs.  Formulae which depend on other things (e.g. GUI events)
-  # need to be evaluated more often and should be defined using formula!
-  # instead so that the created constraint will be volatile.
+  # may need to be evaluated more often and should be defined using
+  # volatile_formula instead.
   #
   # Returns +self+.
   #
@@ -403,10 +402,10 @@ class Constraint::Builder
   #  builder.formula(a) { 30 }
   #
   # +a+ is determined by the current mouse position -- note the
-  # use of formula! instead of formula, since the output can
+  # use of volatile_formula instead of formula, since the output can
   # change independently of any input variables.
   #
-  #  builder.formula!(a) { window.mouse_x }
+  #  builder.volatile_formula(a) { window.mouse_x }
   #
   # You can define multiple formulas in a single constraint (each
   # one with its own output variable), but it won't work unless the
@@ -461,17 +460,17 @@ class Constraint::Builder
     self
   end
 
-  # Like formula, but defines a formula whose output may change independently
+  # Like formula, but defines a formula whose result may change independently
   # of its input variables.  The main difference is that it will get called
   # in response to manual recompute requests, in addition to getting called
-  # when its inputs change.  The resulting constraint will be volatile.
+  # when its inputs change.
   #
   # Returns +self+.
   #
   # See Constraint#volatile?, Variable#recompute, Constraint#recompute,
   # and Plan#recompute.
   #
-  def formula!(args, &code)
+  def volatile_formula(args, &code)
     formula(args, &code)
     @volatile = true
     self
