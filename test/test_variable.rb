@@ -41,7 +41,7 @@ class VariableTest < Test::Unit::TestCase
 
   def test_variables_single
     v = DeltaRed.variables('x')
-    assert Variable === var
+    assert DeltaRed::Variable === v
     assert_equal 'x', v.value
   end
 
