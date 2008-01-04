@@ -389,11 +389,11 @@ class Constraint::Builder
   # 
   # +a+ is 3 times the value of +b+
   #
-  #  builder.formula(a => b) { |b_value| b_value * 3 }
+  #  builder.formula(b => a) { |b_value| b_value * 3 }
   # 
   # +a+ is the sum of the values of +b+ and +c+
   #
-  #  builder.formula(a => [ b, c ]) do |b_value, c_value|
+  #  builder.formula([ b, c ] => a) do |b_value, c_value|
   #    b_value + c_value
   #  end
   #
@@ -412,9 +412,9 @@ class Constraint::Builder
   # formulae are legitimately interrelated.  Here's one example of
   # what is allowed:
   #
-  #  builder.formula(a => [b, c]) { |bv, cv| bv + cv }
-  #  builder.formula(b => [a, c]) { |av, cv| av - cv }
-  #  builder.formula(c => [a, b]) { |av, bv| av - bv }
+  #  builder.formula([b, c] => a) { |bv, cv| bv + cv }
+  #  builder.formula([a, c] => b) { |av, cv| av - cv }
+  #  builder.formula([a, b] => c) { |av, bv| av - bv }
   #
   # This constraint enforces the equality <tt>a = b + c</tt> -- note
   # how each of the output variables are used by each of the
@@ -424,8 +424,8 @@ class Constraint::Builder
   # Here's an example of what won't work (and DeltaRed will try to
   # prevent it from being defined):
   #
-  #  builder.formula(a => b) { |v| v * 2 }
-  #  builder.formula(c => b) { |v| v + 1 }
+  #  builder.formula(b => a) { |v| v * 2 }
+  #  builder.formula(b => c) { |v| v + 1 }
   #
   # This would require DeltaRed to evaluate more than one formula
   # at a time to enforce the constraint; this second example should
@@ -439,8 +439,8 @@ class Constraint::Builder
         raise ArgumentError, "Multiple output variables not allowed"
       end
       raise ArgumentError, "No output variable given" if args.empty?
-      output = args.keys[0]
-      inputs = Array(args[output])
+      inputs, output = args.dup.shift
+      inputs = Array(inputs)
     else
       output = args
       inputs = []

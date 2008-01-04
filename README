@@ -13,7 +13,7 @@ how to update them.
 
  a, b = DeltaRed.variables(0, 0)
  DeltaRed.constraint! do |c|
-   c.formula(a => b) { |v| v * 2 }
+   c.formula(b => a) { |v| v * 2 }
  end
 
  b.value = 3
@@ -41,8 +41,8 @@ Here's an example of a similar kind of thing with DeltaRed:
 
  string, number = DeltaRed.variables("0", 0)
  DeltaRed.constraint! do |c|
-   c.formula(string => number) { |n| n.to_s }
-   c.formula(number => string) { |s| s.to_i }
+   c.formula(number => string) { |n| n.to_s }
+   c.formula(string => number) { |s| s.to_i }
  end
 
  string.value = "23"
@@ -54,104 +54,6 @@ If <tt>string.value</tt> gets set to a different string, DeltaRed will
 know to set <tt>number.value</tt> to its integer equivalent, and if
 <tt>number.value</tt> is set to a different integer, DeltaRed will
 automatically update <tt>string.value</tt>.
-
-== That sounds really awesome!  What's the catch?
-
-DeltaRed _does_ have limitations to what you can do in a single constraint.
-It isn't usually a problem, but it can be inconvenient for some things.
-Consider this rectangular to polar coordinate converter:
-
- x, y, radius, theta = DeltaRed.variables(0.0, 0.0, 0.0, 0.0)
- DeltaRed.constraint! do |c|
-   c.formula(x => [radius, theta]) { |r, t| r*cos(t) }
-   c.formula(y => [radius, theta]) { |r, t| r*sin(t) }
-   c.formula(radius => [x, y]) { |x_, y_| Math.sqrt(x_*x_, y_*y_) }
-   c.formula(theta  => [x, y]) { |x_, y_| Math.atan2(x_, y_) }
- end
-
-(DeltaRed won't actually let you do this)
-
-The problem is that, while DeltaRed can choose between any of the
-formulae to evaluate in response to an update (depending on which variables
-need updating and which have changed), the algorithm it uses doesn't
-allow it to choose more than one at a time.  Here, if +theta+ were
-modified, DeltaRed would end up having to choose to update +x+ or
-+y+, but it wouldn't be able to update both, which is really want you want.
-
-The easiest option is to have a single variable with x and y coordinates
-together in the same object, and radius and theta together in another
-object:
-
- rect, polar = DeltaRed.variables([0.0, 0.0], [0.0, 0.0])
- DeltaRed.constraint! do |c|
-   c.formula(rect => polar) { |p| [ p[0]*Math.cos(p[1]),
-                                    p[0]*Math.sin(p[1]) ] }
-   c.formula(polar => rect) { |r| [ Math.sqrt(r[0]*r[0]+r[1]*r[1]),
-                                    Math.atan2(r[0], r[1]) ] }
- end
-
-+rect+ and +polar+ are each two-element arrays containing the
-coordinate pairs.  Setting +rect+ (via rect.value=) updates
-+polar+, and vice-versa.
-
-== But what if I want separate variables for the coordinates?
-
-Well, in many cases like this you _can_ do it, but there's extra
-overhead.
-
-To make it work, you'd need to convert between +rect+ and +polar+
-just as you see above, and then add four more constraints which
-convert between those and the individual coordinate variables:
-
-          _____    _____    
-   ___   |     |  |     |   _______
-  | x +--+     |  |  p  +--+ theta |
-  |___|  |  r  |  |  o  |  |_______|
-         |  e  +--+  l  |
-   ___   |  c  |  |  a  |   ________
-  | y +--+  t  |  |  r  +--+ radius |
-  |___|  |     |  |     |  |________|
-         |_____|  |_____|
-
-(Each horizontal connecting line represents a constraint.)
-The code for this would look roughly like:
-
- x, y, radius, theta = DeltaRed.variables(0.0, 0.0, 0.0, 0.0)
-
- DeltaRed.variables([0.0, 0.0], [0.0, 0.0]) do |rect, polar|
-   DeltaRed.constraint! do |c| # rect and polar
-     c.formula(rect => polar) { |p| [ p[0]*Math.cos(p[1]),
-                                      p[0]*Math.sin(p[1]) ] }
-     c.formula(polar => rect) { |r| [ Math.sqrt(r[0]*r[0]+r[1]*r[1]),
-                                      Math.atan2(r[0], r[1]) ] }
-   end
-
-   DeltaRed.constraint! do |c| # x and rect
-     c.formula(x => rect) { |r| r[0] }
-     c.formula(rect => [ rect, x ]) { |r, x_| [ x_, r[1] ] }
-   end
-
-   DeltaRed.constraint! do |c| # y and rect
-     c.formula(y => rect) { |r| r[1] }
-     c.formula(rect => [ rect, y ]) { |r, y_| [ r[0], y_ ] }
-   end
-
-   DeltaRed.constraint! do |c| # radius and polar
-     c.formula(radius => polar) { |p| p[0] }
-     c.formula(polar => [ polar, radius ]) { |p, r| [ r, p[1] ] }
-   end
-
-   DeltaRed.constraint! do |c| # theta and polar
-     c.formula(theta => polar) { |p| p[1] }
-     c.formula(polar => [ polar, theta ]) { |p, t| [ p[0], t] }
-   end
- end
-
-Well, yeah.  Anyway, at this point you can set the values +x+, or +y+,
-or +radius+ or +theta+, and all the others will be updated accordingly.
-
-Future versions of the library should make this kind of thing easier to
-do when you need to do it.
 
 == What about threads?
 

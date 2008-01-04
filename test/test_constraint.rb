@@ -15,7 +15,7 @@ class ConstraintTest < Test::Unit::TestCase
   def test_simple_one_way
     a, b = DeltaRed.variables(1, 1)
     DeltaRed.constraint! do |c|
-      c.formula(a => b) { |v| v * 2 }
+      c.formula(b => a) { |v| v * 2 }
     end
     assert_equal 1, b.value
     assert_equal 2, a.value
@@ -30,8 +30,8 @@ class ConstraintTest < Test::Unit::TestCase
   def test_simple_two_way
     a, b = DeltaRed.variables(0, 0)
     DeltaRed.constraint! do |c|
-      c.formula(a => b) { |v| v + 1 }
-      c.formula(b => a) { |v| v - 1 }
+      c.formula(b => a) { |v| v + 1 }
+      c.formula(a => b) { |v| v - 1 }
     end
     assert_equal a.value, b.value + 1
     b.value = 2
@@ -47,7 +47,7 @@ class ConstraintTest < Test::Unit::TestCase
     head = variables.shift
     variables.inject(head) do |prev, curr|
       DeltaRed.constraint! do |c|
-        c.formula(curr => prev) { |v| v }
+        c.formula(prev => curr) { |v| v }
       end
       curr
     end
@@ -67,8 +67,8 @@ class ConstraintTest < Test::Unit::TestCase
     head = variables.shift
     variables.inject(head) do |prev, curr|
       DeltaRed.constraint! do |c|
-        c.formula(curr => prev) { |v| v }
         c.formula(prev => curr) { |v| v }
+        c.formula(curr => prev) { |v| v }
       end
       curr
     end
@@ -86,7 +86,7 @@ class ConstraintTest < Test::Unit::TestCase
   def test_many_to_one
     x, y, z = DeltaRed.variables(1, 1, 1)
     DeltaRed.constraint! do |c|
-      c.formula(x => [y, z]) { |a, b| a + b }
+      c.formula([y, z] => x) { |a, b| a + b }
     end
     assert_equal 1, z.value
     assert_equal 1, y.value
@@ -108,9 +108,9 @@ class ConstraintTest < Test::Unit::TestCase
   def test_many_to_one_two_way
     x, y, z = DeltaRed.variables(1, 1, 1)
     DeltaRed.constraint! do |c|
-      c.formula(x => [y, z]) { |a, b| a + b }
-      c.formula(y => [x, z]) { |a, b| a - b }
-      c.formula(z => [x, y]) { |a, b| a - b }
+      c.formula([y, z] => x) { |a, b| a + b }
+      c.formula([x, z] => y) { |a, b| a - b }
+      c.formula([x, y] => z) { |a, b| a - b }
     end
     assert_equal x.value, y.value + z.value
     y.value = 3
