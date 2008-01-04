@@ -93,7 +93,7 @@ class Variable
         unenforced.add constraint unless constraint.enforcing_method
       end
       for constraint in variable.consuming_constraints
-        constraint.recompute_incremental
+        constraint.compute
         todo.add constraint.enforcing_method.output
       end
     end
@@ -280,7 +280,7 @@ class Constraint
         constraint.incremental_remove
         raise RuntimeError, "Cycle encountered"
       end
-      constraint.recompute_incremental
+      constraint.compute
       todo.merge constraint.enforcing_method.output.consuming_constraints
     end
     self
@@ -323,11 +323,12 @@ class Constraint
     inputs.all? { |v| v.marked? mark or v.stay? }
   end
 
-  def recompute_incremental #:nodoc:
+  def compute #:nodoc:
     output = @enforcing_method.output
     output.walk_strength = output_walk_strength
-    stay = output.stay = constant_output?
-    @enforcing_method.execute if stay
+    output.stay = !@volatile && inputs.all? { |v| v.stay? }
+    # precompute volatile constraints too; better matches naive expectations
+    @enforcing_method.execute
     self
   end
 
@@ -336,10 +337,6 @@ class Constraint
   def recompute
     Plan.new_from_constraints(self).recompute
     self
-  end
-
-  def constant_output? #:nodoc:
-    not volatile? and inputs.all? { |v| v.stay? }
   end
 
   def output_walk_strength #:nodoc:
@@ -652,6 +649,16 @@ end
 def self.constraint!(strength=MEDIUM)
   raise ArgumentError, "No block given" unless block_given?
   Constraint.new(strength) { |builder| yield builder }.enable
+end
+
+# Creates a new input variable (a variable with a volatile
+# constraint automatically added based on the passed-in block)
+def self.input(&block)
+  raise ArgumentError, "No block given" unless block
+  variable = Variable.new
+  method = UserMethod.new(variable, [variable], block)
+  Constraint.__new__([variable], STRONG, true, [method]).enable
+  variable
 end
 
 # Creates new variable objects with the given initial +values+.

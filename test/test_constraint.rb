@@ -12,6 +12,18 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 10, a.value
   end
 
+  def test_simple_volatile
+    a = DeltaRed::Variable.new(0)
+    val = 20
+    DeltaRed.constraint! do |c|
+      c.volatile_formula(a) { val }
+    end
+    assert_equal val, a.value
+    val = 30
+    a.recompute
+    assert_equal val, a.value
+  end
+
   def test_simple_one_way
     a, b = DeltaRed.variables(1, 1)
     DeltaRed.constraint! do |c|
