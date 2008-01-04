@@ -120,7 +120,7 @@ class Variable
 
   # Sets the variable to a specific +value+.  Conceptually, this briefly
   # enables a constant-value constraint on the variable with a strength of
-  # +REQUIRED+ in order to force the variable to the desired value.  Of
+  # +STRONG+ in order to force the variable to the desired value.  Of
   # course, since the "edit constraint" doesn't remain, other constraints
   # may prevent the new value from taking.
   #
@@ -130,7 +130,7 @@ class Variable
     else
       unless @edit_constraint
         @edit_method = EditMethod.new(self, value)
-        @edit_constraint = Constraint.__new__([self], REQUIRED,
+        @edit_constraint = Constraint.__new__([self], STRONG,
                                               false, [@edit_method])
       else
         @edit_method.value = value
