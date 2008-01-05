@@ -204,6 +204,10 @@ class Constraint
   alias volatile? volatile
   alias enabled? enabled
 
+  def constraints #:nodoc:
+    [self]
+  end
+
   class << self
     send :alias_method, :__new__, :new
     def new(strength=MEDIUM)
@@ -610,19 +614,10 @@ class Plan
     def new(*seeds)
       sources = Set.new
       for seed in seeds
-        case seed
-        when Variable
-          for constraint in seed.constraints
-            if constraint.volatile? and constraint.enforcing_method
-              sources.add constraint
-            end
+        for constraint in seed.constraints
+          if constraint.volatile? and constraint.enforcing_method
+            sources.add constraint
           end
-        when Constraint
-          if seed.volatile? and seed.enforcing_method
-            sources.add seed
-          end
-        else
-          raise TypeError, "#{seed.inspect} is not a variable or a constraint"
         end
       end
       unless sources.empty?
