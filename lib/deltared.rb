@@ -204,6 +204,7 @@ class Constraint
   alias volatile? volatile
   alias enabled? enabled
 
+  # duck-typing for plan seeding
   def constraints #:nodoc:
     [self]
   end
