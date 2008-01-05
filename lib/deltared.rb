@@ -698,7 +698,7 @@ end
 # Creates new variable objects with the given initial +values+.
 # If a block is given, a new variable is created for every block
 # argument; if there are more block arguments than arguments to
-# DeltaRed.variable, the additional variables will be initialized
+# DeltaRed.variables, the additional variables will be initialized
 # to +nil+.
 #
 # Returns the result of the block if a block is given, otherwise
