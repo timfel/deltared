@@ -161,4 +161,18 @@ class ConstraintTest < Test::Unit::TestCase
     end
     assert constraint.volatile?
   end
+
+  def test_volatile_formula_exception
+    x = DeltaRed::Variable.new
+    fail = false
+    constraint = DeltaRed.constraint! do |c|
+      c.volatile_formula(x) { raise "blah" if fail ; fail }
+    end
+    assert_equal false, x.value
+    fail = true
+    x.recompute
+    assert_raise(DeltaRed::FormulaError) do
+      x.value
+    end
+  end
 end

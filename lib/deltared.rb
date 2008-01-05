@@ -42,6 +42,14 @@ end
 
 module DeltaRed
 
+class FormulaError < RuntimeError
+  attr_reader :reason
+  def initialize(reason)
+    super("#{reason.class}: #{reason.message}")
+    @reason = reason
+  end
+end
+
 class Mark #:nodoc:
 end 
 
@@ -55,8 +63,6 @@ WEAKEST  = 0 # the weakest constraint strength
 # See Constraint.
 #
 class Variable
-  attr_reader   :value         # the variable's current value
-  attr_writer   :value         #:nodoc:
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
   attr_accessor :walk_strength #:nodoc:
@@ -64,7 +70,6 @@ class Variable
   attr_writer   :mark	       #:nodoc:
 
   # hide from rdoc
-  send :alias_method, :__value__=, :value=
   send :alias_method, :mark, :mark=
   send :alias_method, :constant?, :constant
   undef mark=
@@ -79,6 +84,25 @@ class Variable
     @mark = nil
     @constant = true
     @edit_constraint = nil
+    @deferred = nil
+  end
+
+  # the variable's current value
+  def value
+    return @value unless @deferred
+    @value = @deferred.call
+    @deferred = nil
+    @value
+  end
+
+  def __value__=(value) #:nodoc:
+    @deferred = nil
+    @value = value
+  end
+
+  def __deferred__=(deferred) #:nodoc:
+    @value = nil
+    @deferred = deferred
   end
 
   def remove_propagate_from #:nodoc:
@@ -328,7 +352,7 @@ class Constraint
     output.walk_strength = output_walk_strength
     output.constant = !@volatile && inputs.all? { |v| v.constant? }
     # precompute volatile constraints too; better matches naive expectations
-    @enforcing_method.execute
+    @enforcing_method.call
     self
   end
 
@@ -505,8 +529,8 @@ module Method #:nodoc:
     raise NotImplementedError, "#{self.class}#output not implemented"
   end
 
-  def execute
-    raise NotImplementedError, "#{self.class}#execute not implemented"
+  def call
+    raise NotImplementedError, "#{self.class}#call not implemented"
   end
 
   def substitute(map)
@@ -524,7 +548,7 @@ class EditMethod #:nodoc:
     @value = value
   end
 
-  def execute
+  def call
     @output.__value__ = @value
     self
   end
@@ -545,8 +569,14 @@ class UserMethod #:nodoc:
     @code = code
   end
 
-  def execute
-    @output.__value__ = @code.call *@inputs.map { |i| i.value }
+  def call
+    begin
+      @output.__value__ = @code.call *@inputs.map { |i| i.value }
+    rescue FormulaError => e
+      @output.__deferred__ = proc { raise FormulaError, e.reason }
+    rescue Exception => e
+      @output.__deferred__ = proc { raise FormulaError, e }
+    end
     self
   end
 
@@ -621,7 +651,7 @@ class Plan
 
   # Recomputes the variables covered by this plan and returns +self+.
   def recompute
-    @plan.each { |method| method.execute }
+    @plan.each { |method| method.call }
     self
   end
 
