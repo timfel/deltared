@@ -45,7 +45,7 @@ class Toy
       @graphics = []
       @grabbed = nil
       @window.draw do |ctx|
-        ctx.clear_rgb 1.0, 0.95, 0.9
+        ctx.clear_rgb 1.0, 0.955, 0.9
         @graphics.each { |g| g.draw ctx }
       end
       @window.press do |x, y|
