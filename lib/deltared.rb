@@ -690,9 +690,20 @@ end
 def self.input(&block)
   raise ArgumentError, "No block given" unless block
   variable = Variable.new
-  method = UserMethod.new(variable, [variable], block)
+  method = UserMethod.new(variable, [], block)
   Constraint.__new__([variable], STRONG, true, [method]).enable
   variable
+end
+
+# Creates a new output constraint (a dummy constraint which
+# takes a number of variables as inputs and calls the given
+# block whenever they are updated).
+def self.output(*variables, &block)
+  raise ArgumentError, "No variables given" if variables.empty?
+  raise ArgumentError, "No block given" unless block
+  variable = Variable.new
+  method = UserMethod.new(variable, variables, block)
+  Constraint.__new__([variable], STRONG, true, [method]).enable
 end
 
 # Creates new variable objects with the given initial +values+.

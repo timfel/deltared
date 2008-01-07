@@ -175,4 +175,29 @@ class ConstraintTest < Test::Unit::TestCase
       x.value
     end
   end
+
+  def test_output
+    x, y = DeltaRed.variables(0, 0)
+    values = nil
+    constraint = DeltaRed.output(x, y) { |x_, y_| values = [x_, y_] }
+    assert DeltaRed::Constraint === constraint
+    assert_equal [0, 0], values
+    x.value = 1
+    assert_equal [1, 0], values
+    y.value = 2
+    assert_equal [1, 2], values
+  end
+
+  def test_output_no_variables
+    assert_raise ArgumentError do
+      constraint = DeltaRed.output {}
+    end
+  end
+
+  def test_output_no_block
+    x, y = DeltaRed.variables(0, 0)
+    assert_raise ArgumentError do
+      constraint = DeltaRed.output(x, y)
+    end
+  end
 end
