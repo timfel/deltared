@@ -32,9 +32,9 @@ require 'toy_gtk'
 class Toy
   class << self
     private :new
-    def run(&block)
-      Impl.soon do
-        new.instance_eval &block
+    def run(*args, &block)
+      Impl.run do
+        new(*args).instance_eval &block
       end
     end
   end
@@ -43,25 +43,31 @@ class Toy
     def initialize(title)
       @window = Impl::Window.new(title)
       @graphics = []
-      @window.redraw do |ctx|
+      @grabbed = nil
+      @window.draw do |ctx|
         ctx.clear_rgb 1.0, 0.95, 0.9
         @graphics.each { |g| g.draw ctx }
       end
-      @grabbed = nil
-      @window.pressed do |x, y|
+      @window.press do |x, y|
         hit = @graphics.reverse.find { |g| g.hit?(x, y) }
         if hit
           @grabbed = hit
           @window.grab
+          @grabbed.dragged(x, y)
         end
       end
-      @window.dragged do |x, y|
+      @window.drag do |x, y|
         @grabbed.dragged(x, y) if @grabbed
       end
-      @window.released do
+      @window.release do |x, y|
         @window.ungrab if @grabbed
         @grabbed = nil
       end
+    end
+
+    def queue_redraw
+      @window.queue_redraw
+      self
     end
 
     def clear_graphics
@@ -107,6 +113,7 @@ class Toy
     attr_reader :graphic
 
     def initialize(parent)
+      @parent = parent
       @x = 0
       @y = 0
       @draw = nil
@@ -205,24 +212,33 @@ class Toy
     self
   end
 
+  KNOT_SIZE = 10.0
+  KNOT_RADIUS = KNOT_SIZE / 2.0
+
   def knot(x, y, &block)
     graphic = Graphic.new(@toy_window)
     block = proc { |x, y| graphic.move(x, y) } unless block
     graphic.when_dragged(&block)
     graphic.redraw do |ctx|
       ctx.clear_path
-      ctx.move_to -5, -5
-      ctx.line_to 5, -5
-      ctx.line_to 5, 5
-      ctx.line_to -5, 5
+      ctx.move_to -KNOT_RADIUS, -KNOT_RADIUS
+      ctx.line_to KNOT_RADIUS, -KNOT_RADIUS
+      ctx.line_to KNOT_RADIUS, KNOT_RADIUS
+      ctx.line_to -KNOT_RADIUS, KNOT_RADIUS
       ctx.close_path
       ctx.stroke_rgb 1, 0.0, 0.5, 0.0
     end
     graphic.hit_test do |x, y|
-      (self.x - x).abs >= 5 and (self.y - y).abs >= 5
+      (graphic.x - x).abs <= KNOT_RADIUS  and (graphic.y - y).abs <= KNOT_RADIUS
     end
     graphic.move(x, y)
     @toy_window.add_graphic(graphic)
     self
   end
+end
+
+if __FILE__ == $0
+Toy.run "Demo Toy" do
+  knot 50, 50
+end
 end

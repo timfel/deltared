@@ -1,4 +1,4 @@
-# toy - a simple API for trivial demo applications
+# toy_gtk - a simple API for trivial demo applications (Gtk backend)
 #
 # Copyright 2007-2008  MenTaLguY <mental@rydia.net>
 #
@@ -27,202 +27,166 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-require 'toy_gtk'
+require 'gtk2'
+
+Gtk.init
 
 class Toy
-  class << self
-    private :new
-    def run(*args, &block)
-      Impl.right_away do
-        new(*args).instance_eval &block
-      end
+module Impl
+
+@initted = false
+
+def self.run(&block)
+  exception = nil
+  GLib::Idle.add do
+    begin
+      block.call
+    rescue Exception => exception
+      Gtk.main_quit
     end
+    false
+  end
+  Gtk.main
+  raise exception if exception
+end
+
+class RenderContext
+  def initialize(cairo)
+    @cairo = cairo
   end
 
-  class Window
-    def initialize(title)
-      @window = Impl::Window.new(title)
-      @graphics = []
-      @grabbed = nil
-      @window.draw do |ctx|
-        ctx.clear_rgb 1.0, 0.95, 0.9
-        @graphics.each { |g| g.draw ctx }
-      end
-      @window.pressed do |x, y|
-        hit = @graphics.reverse.find { |g| g.hit?(x, y) }
-        if hit
-          @grabbed = hit
-          @window.grab
-        end
-      end
-      @window.dragged do |x, y|
-        @grabbed.dragged(x, y) if @grabbed
-      end
-      @window.released do
-        @window.ungrab if @grabbed
-        @grabbed = nil
-      end
-    end
-
-    def clear_graphics
-      @graphics.clear
-      if @grabbed
-        @window.ungrab
-        @grabbed = nil
-      end
-      @window.queue_redraw
-      self
-    end
-
-    def add_graphic(graphic, before=nil)
-      if before
-        index = @graphics.index before_graphic
-      else
-        index = nil
-      end
-      if index
-        @graphics[index, 0] = graphic
-      else
-        @graphics.push graphic
-      end
-      @window.queue_redraw
-      self
-    end
-
-    def delete_graphic(graphic)
-      @graphics.delete graphic
-      if @grabbed = graphic
-        @window.ungrab
-        @grabbed = nil
-      end
-      @window.queue_redraw
-      self
-    end
+  def translate(x, y)
+    @cairo.translate(x, y)
+    self
   end
 
-  class Graphic
-    attr_reader :parent
-    attr_reader :x
-    attr_reader :y
-    attr_reader :graphic
+  def clear_path
+    @cairo.new_path
+    self
+  end
 
-    def initialize(parent)
-      @x = 0
-      @y = 0
-      @draw = nil
-      @when_dragged = nil
-      @hit_test = nil
-      @hidden = false
+  def move_to(x, y)
+    @cairo.move_to(x, y)
+    self
+  end
+
+  def line_to(x, y)
+    @cairo.line_to(x, y)
+    self
+  end
+
+  def close_path
+    @cairo.close_path
+    self
+  end
+
+  def clear_rgb(r, g, b)
+    @cairo.set_source_rgb(r, g, b)
+    @cairo.paint
+    self
+  end
+
+  def stroke_rgb(width, r, g, b)
+    @cairo.line_width = width
+    @cairo.set_source_rgb(r, g, b)
+    @cairo.stroke_preserve
+    self
+  end
+
+  def fill_rgb(width, r, g, b)
+    @cairo.set_source_rgb(r, g, b)
+    @cairo.fill_preserve
+    self
+  end
+
+  def group
+    begin
+      @cairo.save
+      yield
+    ensure
+      @cairo.restore
     end
+  end
+end
 
-    def remove
-      @parent.delete_graphic self
-      self
-    end
-
-    def move(x, y)
-      x = x.to_i
-      y = y.to_i
-      if @x != x or @y != y
-        @x = x
-        @y = y
-        @parent.queue_redraw
-      end
-      self
-    end
-
-    def draw(ctx)
+class Window
+  def initialize(title)
+    @toplevel = Gtk::Window.new
+    @toplevel.title = title
+    @canvas = Gtk::DrawingArea.new
+    @toplevel.add @canvas
+    @toplevel.show_all
+    @toplevel.signal_connect('delete_event') { Gtk.main_quit ; false }
+    @draw = nil
+    @press = nil
+    @drag = nil
+    @release = nil
+    @canvas.signal_connect('expose_event') do
       if @draw
-        ctx.group do
-          ctx.translate @x, @y
-          @draw.call(ctx)
-        end
+        ctx = RenderContext.new @canvas.window.create_cairo_context
+        @draw.call ctx 
       end
-      self
     end
-
-    def dragged(x, y)
-      @when_dragged.call(x, y) if @when_dragged
-      self
-    end
-
-    def hit?(x, y)
-      if @hit_test
-        not @hidden and @hit_test.call(x, y)
-      else
-        false
-      end 
-    end
-
-    def show
-      @hidden = false
-      @parent.queue_redraw
-      self
-    end
-
-    def hide
-      @hidden = true
-      @parent.queue_redraw
-      self
-    end
-
-    def hidden? ; @hidden ; end
-
-    def redraw(&block)
-      if not @hidden and ( not block or @draw != block )
-        @draw = block if block
-        @parent.queue_redraw
+    @canvas.signal_connect('button_press_event') do |_, event|
+      if @press and event.button = 1 and event.event_type == Gdk::Event::BUTTON_PRESS
+        @press.call event.x.to_i, event.y.to_i
       end
-      self
     end
-
-    def when_dragged(&block)
-      @when_dragged = block
-      self
+    @canvas.signal_connect('motion_notify_event') do |_, event|
+      if @drag and ( event.state & Gdk::Window::BUTTON1_MASK ).nonzero?
+        @drag.call event.x.to_i, event.y.to_i
+      end
     end
-
-    def hit_test(&block)
-      @hit_test = block
-      self
+    @canvas.signal_connect('button_release_event') do |_, event|
+      if @press and event.button = 1 and event.event_type == Gdk::Event::BUTTON_RELEASE
+        @release.call event.x.to_i, event.y.to_i
+      end
     end
+    @canvas.add_events(Gdk::Event::BUTTON_PRESS_MASK | Gdk::Event::BUTTON_RELEASE_MASK | Gdk::Event::BUTTON1_MOTION_MASK)
   end
 
-  def initialize(title="Toy")
-    @toy_window = Window.new(title)
+  def queue_redraw
+    w = @canvas.window
+    return self unless w
+    x, y, width, height = w.geometry
+    rect = Gdk::Rectangle.new(x, y, width, height)
+    w.invalidate rect, false
+    self
   end
 
-  def clear(&block)
-    @toy_window.clear_graphics
-    draw(&block) if block
+  def grab
+    w = @canvas.window
+    return self unless w
+    Gdk.pointer_grab(w, false, @canvas.events, nil, nil, Gdk::Event::CURRENT_TIME)
+    self
+  end
+
+  def ungrab
+    Gdk.pointer_ungrab(Gdk::Event::CURRENT_TIME)
     self
   end
 
   def draw(&block)
-    raise ArgumentError, "No block given" unless block
-    graphic = Graphic.new(@toy_window)
-    graphic.redraw(&block)
-    @toy_window.add_graphic(graphic)
+    @draw = block
+    queue_redraw
     self
   end
 
-  def knot(x, y, &block)
-    graphic = Graphic.new(@toy_window)
-    block = proc { |x, y| graphic.move(x, y) } unless block
-    graphic.when_dragged(&block)
-    graphic.redraw do |ctx|
-      ctx.clear_path
-      ctx.move_to -5, -5
-      ctx.line_to 5, -5
-      ctx.line_to 5, 5
-      ctx.line_to -5, 5
-      ctx.close_path
-      ctx.stroke_rgb 1, 0.0, 0.5, 0.0
-    end
-    graphic.hit_test do |x, y|
-      (self.x - x).abs >= 5 and (self.y - y).abs >= 5
-    end
-    graphic.move(x, y)
-    @toy_window.add_graphic(graphic)
+  def press(&block)
+    @press = block
     self
   end
+
+  def drag(&block)
+    @drag = block
+    self
+  end
+
+  def release(&block)
+    @release = block
+    self
+  end
+end
+
+end
 end
