@@ -209,7 +209,7 @@ class Toy
     graphic = Graphic.new(@toy_window)
     graphic.redraw(&block)
     @toy_window.add_graphic(graphic)
-    self
+    graphic
   end
 
   KNOT_SIZE = 10.0
@@ -233,7 +233,7 @@ class Toy
     end
     graphic.move(x, y)
     @toy_window.add_graphic(graphic)
-    self
+    graphic
   end
 end
 

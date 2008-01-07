@@ -75,6 +75,11 @@ class RenderContext
     self
   end
 
+  def curve_to(x0, y0, x1, y1, x2, y2)
+    @cairo.curve_to(x0, y0, x1, y1, x2, y2)
+    self
+  end
+
   def close_path
     @cairo.close_path
     self
