@@ -703,7 +703,7 @@ def self.output(*variables, &block)
   raise ArgumentError, "No block given" unless block
   variable = Variable.new
   method = UserMethod.new(variable, variables, block)
-  Constraint.__new__([variable, *variables], STRONG, true, [method]).enable
+  Constraint.__new__([variable, *variables], STRONG, false, [method]).enable
 end
 
 # Creates new variable objects with the given initial +values+.
