@@ -168,6 +168,28 @@ class Variable
     "#<DeltaRed::Variable object_id=#{object_id} value=#{@value.inspect}>"
   end
   send :alias_method, :to_s, :inspect
+
+  # Establishes a one-way constraint fixing this variable's value, but
+  # does not enable it.  It returns the new constraint.
+  #
+  # See also DeltaRed.constraint, DeltaRed.constraint!, and
+  # DeltaRed::Variable#constraint!
+  #
+  def constraint(*inputs, &block)
+    DeltaRed.constraint do |c|
+      c.formula(inputs => self, &block)
+    end
+  end
+
+  # Establishes a one-way constraint fixing this variable's value
+  # and enables it, returning the new constraint.
+  #
+  # See also DeltaRed.constraint, DeltaRed.constraint!, and
+  # DeltaRed::Variable#constraint
+  #
+  def constraint!(*inputs, &block)
+    constraint(*inputs, &block).enable
+  end
 end
 
 # A Constraint determines the values of some variables (its "outputs")

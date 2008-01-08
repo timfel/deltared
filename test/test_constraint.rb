@@ -176,6 +176,18 @@ class ConstraintTest < Test::Unit::TestCase
     end
   end
 
+  def test_one_way_constraint
+    a, b = DeltaRed.variables(1, 1)
+    assert_equal 1, a.value
+    assert_equal 1, b.value
+    b.constraint!(a) { |v| v * 2 }
+    assert_equal 1, a.value
+    assert_equal 2, b.value
+    a.value = 3
+    assert_equal 3, a.value
+    assert_equal 6, b.value
+  end
+
   def test_output
     x, y = DeltaRed.variables(0, 0)
     values = nil
