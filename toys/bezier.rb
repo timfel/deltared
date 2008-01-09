@@ -33,43 +33,24 @@ require 'toy'
 require 'deltared'
 
 Toy.run("Bezier") do
-  endpoints = DeltaRed.variables([10, 50], [150, 50])
-  velocities = DeltaRed.variables([40, 0], [40, 0])
+  inputs = DeltaRed.variables([10, 50], [50, 60], [60, 40], [100, 50])
+  velocities = DeltaRed.variables(nil, nil)
+  outputs = [inputs[0]] + DeltaRed.variables(nil, nil) + [inputs[3]]
 
-  control_points = DeltaRed.variables(nil, nil, nil, nil)
-
-  control_points[0].constraint!(endpoints.first)
-  control_points[1].constraint!(endpoints.first, velocities.first) do |ep, vel|
-    [ ep[0] + vel[0], ep[1] + vel[1] ]
+  (0..1).each do |i|
+    endpoint = inputs[i*3]
+    velocity = velocities[i]
+    velocity.constraint!(inputs[i+1]) do |h|
+      rel_to = endpoint.value
+      [ h[0] - rel_to[0], h[1] - rel_to[1] ]
+    end
+    outputs[i+1].constraint!(endpoint, velocity) do |h, v|
+      [ h[0] + v[0], h[1] + v[1] ]
+    end
   end
-  control_points[2].constraint!(endpoints.last, velocities.last) do |ep, vel|
-    [ ep[0] - vel[0], ep[1] - vel[1] ]
-  end
-  control_points[3].constraint!(endpoints.last)
 
   bezier = draw {}
-  handles = (0..3).map { knot(0, 0) }
-
-  handles[0].when_dragged do |x, y|
-    endpoints.first.value = [x, y]
-  end
-  handles[1].when_dragged do |x, y|
-    ep = endpoints.first.value
-    velocities.first.value = [ x - ep[0], y - ep[1] ]
-  end
-  handles[2].when_dragged do |x, y|
-    ep = endpoints.last.value
-    velocities.last.value = [ ep[0] - x, ep[1] - y ]
-  end
-  handles[3].when_dragged do |x, y|
-    endpoints.last.value = [x, y]
-  end
-
-  handles.zip(control_points) do |handle, control_point|
-    DeltaRed.output(control_point) { |x, y| handle.move(x, y) }
-  end
-
-  DeltaRed.output(*control_points) do |(x0, y0), (x1, y1), (x2, y2), (x3, y3)|
+  DeltaRed.output(*outputs) do |(x0, y0), (x1, y1), (x2, y2), (x3, y3)|
     bezier.redraw do |ctx|
       ctx.move_to x0, y0
       ctx.curve_to x1, y1, x2, y2, x3, y3
@@ -80,5 +61,10 @@ Toy.run("Bezier") do
       ctx.line_to x3, y3
       ctx.stroke_rgb 1, 0.0, 0.0, 0.0
     end
+  end
+
+  inputs.zip(outputs) do |input, output|
+    handle = knot(*output.value) { |x, y| input.value = [x, y] }
+    DeltaRed.output(output) { |x, y| handle.move(x, y) }
   end
 end
