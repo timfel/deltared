@@ -96,6 +96,10 @@ Toy.run("Bezier") do
     c.formula(beziers.first.endpoints.last => beziers.last.endpoints.first)
     c.formula(beziers.last.endpoints.first => beziers.first.endpoints.last)
   end
+  DeltaRed.constraint! do |c|
+    c.formula(beziers.first.velocities.last => beziers.last.velocities.first)
+    c.formula(beziers.last.velocities.first => beziers.first.velocities.last)
+  end
   beziers.each { |b| b.draw_bezier(self) }
   beziers.each { |b| b.draw_handles(self) }
 end
