@@ -40,12 +40,13 @@ Toy.run("Bezier") do
   (0..1).each do |i|
     endpoint = inputs[i*3]
     velocity = velocities[i]
+    sign = 1 - 2 * i
     velocity.constraint!(inputs[i+1]) do |h|
       rel_to = endpoint.value
-      [ h[0] - rel_to[0], h[1] - rel_to[1] ]
+      [ sign * ( h[0] - rel_to[0] ), sign * ( h[1] - rel_to[1] ) ]
     end
     outputs[i+1].constraint!(endpoint, velocity) do |h, v|
-      [ h[0] + v[0], h[1] + v[1] ]
+      [ h[0] + sign * v[0], h[1] + sign * v[1] ]
     end
   end
 
