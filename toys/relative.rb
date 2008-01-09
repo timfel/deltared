@@ -40,7 +40,7 @@ Toy.run("One-way Relative Constraint") do
   a, b = inputs
   c, d = outputs
 
-  delta.constraint!(b) { |b_v| b_v - a.value }
+  delta.constraint!(b) { |b_v| [ 10, b_v - a.value ].max }
   c.constraint!(a)
   d.constraint!(a, delta) { |a_v, delta_v| a_v + delta_v }
 
