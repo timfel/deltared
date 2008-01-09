@@ -32,40 +32,68 @@ $:.push(File.join(File.dirname($0), "..", "lib"))
 require 'toy'
 require 'deltared'
 
+class Bezier
+  attr_reader :inputs
+  attr_reader :endpoints
+  attr_reader :velocities
+  attr_reader :outputs
+
+  def initialize(c0, c1, c2, c3)
+    @inputs = DeltaRed.variables(c0, c1, c2, c3)
+    @velocities = DeltaRed.variables(nil, nil)
+    @endpoints = [inputs[0], inputs[3]]
+    @outputs = [inputs[0]] + DeltaRed.variables(nil, nil) + [inputs[3]]
+
+    (0..1).each do |i|
+      endpoint = inputs[i*3]
+      velocity = velocities[i]
+      sign = 1 - 2 * i
+      velocity.constraint!(inputs[i+1]) do |h|
+        rel_to = endpoint.value
+        [ sign * ( h[0] - rel_to[0] ), sign * ( h[1] - rel_to[1] ) ]
+      end
+      outputs[i+1].constraint!(endpoint, velocity) do |h, v|
+        [ h[0] + sign * v[0], h[1] + sign * v[1] ]
+      end
+    end
+  end
+
+  def draw_bezier(toy)
+    bezier = toy.draw {}
+    DeltaRed.output(*outputs) do |(x0, y0), (x1, y1), (x2, y2), (x3, y3)|
+      bezier.redraw do |ctx|
+        ctx.move_to x0, y0
+        ctx.curve_to x1, y1, x2, y2, x3, y3
+        ctx.stroke_rgb 2, 0.0, 0.0, 0.9
+        ctx.move_to x0, y0
+        ctx.line_to x1, y1
+        ctx.move_to x2, y2
+        ctx.line_to x3, y3
+        ctx.stroke_rgb 1, 0.0, 0.0, 0.0
+      end
+    end
+    self
+  end
+
+  def draw_handles(toy)
+    inputs.zip(outputs) do |input, output|
+      handle = toy.knot(*output.value) { |x, y| input.value = [x, y] }
+      DeltaRed.output(output) { |x, y| handle.move(x, y) }
+    end
+    self
+  end
+end
+
 Toy.run("Bezier") do
-  inputs = DeltaRed.variables([10, 50], [50, 60], [60, 40], [100, 50])
-  velocities = DeltaRed.variables(nil, nil)
-  outputs = [inputs[0]] + DeltaRed.variables(nil, nil) + [inputs[3]]
-
-  (0..1).each do |i|
-    endpoint = inputs[i*3]
-    velocity = velocities[i]
-    sign = 1 - 2 * i
-    velocity.constraint!(inputs[i+1]) do |h|
-      rel_to = endpoint.value
-      [ sign * ( h[0] - rel_to[0] ), sign * ( h[1] - rel_to[1] ) ]
-    end
-    outputs[i+1].constraint!(endpoint, velocity) do |h, v|
-      [ h[0] + sign * v[0], h[1] + sign * v[1] ]
-    end
+  beziers = [[[10, 10], [20, 20], [30, 30], [40, 40]],
+             [[50, 50], [60, 60], [70, 70], [80, 80]]].map \
+  { |nodes|
+    Bezier.new(*nodes)
+  }
+  DeltaRed.constraint! do |c|
+    c.formula(beziers.first.endpoints.last => beziers.last.endpoints.first)
+    c.formula(beziers.last.endpoints.first => beziers.first.endpoints.last)
   end
-
-  bezier = draw {}
-  DeltaRed.output(*outputs) do |(x0, y0), (x1, y1), (x2, y2), (x3, y3)|
-    bezier.redraw do |ctx|
-      ctx.move_to x0, y0
-      ctx.curve_to x1, y1, x2, y2, x3, y3
-      ctx.stroke_rgb 2, 0.0, 0.0, 0.9
-      ctx.move_to x0, y0
-      ctx.line_to x1, y1
-      ctx.move_to x2, y2
-      ctx.line_to x3, y3
-      ctx.stroke_rgb 1, 0.0, 0.0, 0.0
-    end
-  end
-
-  inputs.zip(outputs) do |input, output|
-    handle = knot(*output.value) { |x, y| input.value = [x, y] }
-    DeltaRed.output(output) { |x, y| handle.move(x, y) }
-  end
+  beziers.each { |b| b.draw_bezier(self) }
+  beziers.each { |b| b.draw_handles(self) }
 end
