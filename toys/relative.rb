@@ -32,7 +32,7 @@ $:.push(File.join(File.dirname($0), "..", "lib"))
 require 'toy'
 require 'deltared'
 
-Toy.run("One-way Relative Constraint") do
+Toy.run("One-way Relative Constraint") do |toy|
   inputs = DeltaRed.variables(40, 50)
   delta = DeltaRed.variables(10)
   outputs = DeltaRed.variables(40, 50)
@@ -44,7 +44,7 @@ Toy.run("One-way Relative Constraint") do
   c.constraint!(a)
   d.constraint!(a, delta) { |a_v, delta_v| a_v + delta_v }
 
-  handles = inputs.map { |input| knot(input.value, 50) { |x, y| input.value = x } }
+  handles = inputs.map { |input| toy.knot(input.value, 50) { |x, y| input.value = x } }
   outputs.zip(handles) do |output, handle|
     DeltaRed.output(output) { |value| handle.move(value, 50) }
   end

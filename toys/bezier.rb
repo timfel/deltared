@@ -86,7 +86,7 @@ class Bezier
   end
 end
 
-Toy.run("Bezier") do
+Toy.run("Bezier") do |toy|
   beziers = [[[10, 100], [30, 100], [40, 20], [60, 20]],
              [[60, 20], [80, 20], [90, 100], [110, 100]]].map \
   { |nodes|
@@ -100,6 +100,6 @@ Toy.run("Bezier") do
     c.formula(beziers.first.velocities.last => beziers.last.velocities.first)
     c.formula(beziers.last.velocities.first => beziers.first.velocities.last)
   end
-  beziers.each { |b| b.draw_bezier(self) }
-  beziers.each { |b| b.draw_handles(self) }
+  beziers.each { |b| b.draw_bezier(toy) }
+  beziers.each { |b| b.draw_handles(toy) }
 end

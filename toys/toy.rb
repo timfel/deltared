@@ -34,7 +34,7 @@ class Toy
     private :new
     def run(*args, &block)
       Impl.run do
-        new(*args).instance_eval &block
+        block.call new(*args)
       end
     end
   end
