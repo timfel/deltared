@@ -62,9 +62,11 @@ class Bezier
     bezier = toy.draw {}
     DeltaRed.output(*outputs) do |(x0, y0), (x1, y1), (x2, y2), (x3, y3)|
       bezier.redraw do |ctx|
+        ctx.clear_path
         ctx.move_to x0, y0
         ctx.curve_to x1, y1, x2, y2, x3, y3
         ctx.stroke_rgb 2, 0.0, 0.0, 0.9
+        ctx.clear_path
         ctx.move_to x0, y0
         ctx.line_to x1, y1
         ctx.move_to x2, y2
