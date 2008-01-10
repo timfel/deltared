@@ -176,7 +176,9 @@ class Variable
   # DeltaRed::Variable#constraint!
   #
   def constraint(*inputs, &block)
-    DeltaRed.constraint do |c|
+    options = Constraint::DEFAULT_OPTIONS
+    options = inputs.pop if Hash === inputs.last
+    DeltaRed.constraint(options) do |c|
       c.formula(inputs => self, &block)
     end
   end
@@ -231,11 +233,16 @@ class Constraint
     [self]
   end
 
+  DEFAULT_OPTIONS = {
+    :strength => MEDIUM,
+    :volatile => false
+  }.freeze
+
   class << self
     send :alias_method, :__new__, :new
-    def new(strength=MEDIUM)
+    def new(options=Constraint::DEFAULT_OPTIONS)
       raise ArgumentError, "No block given" unless block_given?
-      builder = Builder.new(strength)
+      builder = Builder.new(options)
       yield builder
       builder.build
     end
@@ -412,11 +419,12 @@ end
 # by calling formula to define output variables and then build to build
 # the corresponding constraint.
 class Constraint::Builder
-  def initialize(strength=MEDIUM)
+  def initialize(options=Constraint::DEFAULT_OPTIONS)
+    options = Constraint::DEFAULT_OPTIONS.merge options
     @methods = []
     @outputs = Set.new
-    @strength = strength
-    @volatile = false
+    @strength = options[:strength]
+    @volatile = options[:volatile]
   end
 
   # hide from rdoc
@@ -690,17 +698,17 @@ end
 #
 # See also Constraint::Builder and Constraint#enable.
 #
-def self.constraint(strength=MEDIUM)
+def self.constraint(options=Constraint::DEFAULT_OPTIONS)
   raise ArgumentError, "No block given" unless block_given?
-  Constraint.new(strength) { |builder| yield builder }
+  Constraint.new(options) { |builder| yield builder }
 end
 
 # Like DeltaRed.constraint, but enables the new constraint
 # before returning it.
 #
-def self.constraint!(strength=MEDIUM)
+def self.constraint!(options=Constraint::DEFAULT_OPTIONS)
   raise ArgumentError, "No block given" unless block_given?
-  Constraint.new(strength) { |builder| yield builder }.enable
+  Constraint.new(options) { |builder| yield builder }.enable
 end
 
 def self.plan_recompute(*seeds)
