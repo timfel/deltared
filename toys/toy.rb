@@ -70,6 +70,10 @@ class Toy
       self
     end
 
+    def add_button(label, &block)
+      @window.add_button(label, &block)
+    end
+
     def clear_graphics
       @graphics.clear
       if @grabbed
@@ -234,6 +238,10 @@ class Toy
     graphic.move(x, y)
     @toy_window.add_graphic(graphic)
     graphic
+  end
+
+  def button(label, &block)
+    @toy_window.add_button(label, &block)
   end
 end
 

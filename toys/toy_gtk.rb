@@ -114,13 +114,86 @@ class RenderContext
   end
 end
 
+class Widget
+  def initialize(widget)
+    @widget = widget
+  end
+
+  def show
+    @widget.show
+    self
+  end
+
+  def hide
+    @widget.hide
+    self
+  end
+
+  def hidden=(hide)
+    if hide
+      @widget.hide
+    else
+      @widget.show
+    end
+    self
+  end
+
+  def hidden? ; not @widget.visible? ; end
+
+  def enable
+    @widget.sensitive = true
+    self
+  end
+
+  def disable
+    @widget.sensitive = false
+    self
+  end
+
+  def enabled=(enable)
+    @widget.sensitive = !!enable
+    self
+  end
+
+  def enabled? ; @widget.sensitive? ; end
+end
+
+class Button < Widget
+  def initialize(widget)
+    super(widget)
+    @connection = nil
+  end
+
+  def label ; @widget.label ; end
+  def label=(label) ; @widget.label = label ; end
+
+  def when_clicked(&block)
+    @widget.signal_handler_disconnect @connection if @connection
+    if block
+      @connection = @widget.signal_connect('clicked') { block.call }
+    else
+      @connection = nil
+    end
+    self
+  end
+end
+
 class Window
   def initialize(title)
     @toplevel = Gtk::Window.new
     @toplevel.title = title
+
+    content_box = Gtk::VBox.new
+    @toplevel.add content_box
+
+    @controls = Gtk::HBox.new
+    content_box.pack_start @controls, false
+
     @canvas = Gtk::DrawingArea.new
-    @toplevel.add @canvas
+    content_box.pack_start @canvas, true, true
+
     @toplevel.show_all
+
     @toplevel.signal_connect('delete_event') { Gtk.main_quit ; false }
     @draw = nil
     @press = nil
@@ -154,9 +227,19 @@ class Window
     w = @canvas.window
     return self unless w
     x, y, width, height = w.geometry
-    rect = Gdk::Rectangle.new(x, y, width, height)
+    rect = Gdk::Rectangle.new(0, 0, width, height)
     w.invalidate rect, false
     self
+  end
+
+  def add_button(label, &block)
+    widget = Gtk::Button.new
+    button = Button.new(widget)
+    button.label = label
+    button.when_clicked(&block)
+    button.show
+    @controls.pack_start(widget, false, false, 2)
+    button
   end
 
   def grab

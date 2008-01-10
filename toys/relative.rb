@@ -33,9 +33,15 @@ require 'toy'
 require 'deltared'
 
 Toy.run("One-way Relative Constraint") do |toy|
-  inputs = DeltaRed.variables(40, 50)
+  initial_values = [40, 50]
+
+  inputs = DeltaRed.variables(*initial_values)
   delta = DeltaRed.variables(10)
   outputs = DeltaRed.variables(40, 50)
+
+  reset_button = toy.button("reset") do
+    inputs.zip(initial_values) { |input, value| input.value = value }
+  end
 
   a, b = inputs
   c, d = outputs
@@ -47,5 +53,8 @@ Toy.run("One-way Relative Constraint") do |toy|
   handles = inputs.map { |input| toy.knot(input.value, 50) { |x, y| input.value = x } }
   outputs.zip(handles) do |output, handle|
     DeltaRed.output(output) { |value| handle.move(value, 50) }
+  end
+  DeltaRed.output(*outputs) do |*values|
+    reset_button.enabled = ( values != initial_values )
   end
 end
