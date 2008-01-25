@@ -84,25 +84,24 @@ class Variable
     @mark = nil
     @constant = true
     @edit_constraint = nil
-    @deferred = nil
+    @exception = nil
   end
 
   # the variable's current value
   def value
-    return @value unless @deferred
-    @value = @deferred.call
-    @deferred = nil
+    raise FormulaError, @exception if @exception
     @value
   end
 
   def __value__=(value) #:nodoc:
-    @deferred = nil
+    @exception = nil
     @value = value
   end
 
-  def __deferred__=(deferred) #:nodoc:
+  def __fail__(exception) #:nodoc:
     @value = nil
-    @deferred = deferred
+    @exception = exception
+    self
   end
 
   def remove_propagate_from #:nodoc:
@@ -608,9 +607,9 @@ class UserMethod #:nodoc:
     begin
       @output.__value__ = @code.call *@inputs.map { |i| i.value }
     rescue FormulaError => e
-      @output.__deferred__ = proc { raise FormulaError, e.reason }
+      @output.__fail__(e.reason)
     rescue Exception => e
-      @output.__deferred__ = proc { raise FormulaError, e }
+      @output.__fail__(e)
     end
     self
   end
