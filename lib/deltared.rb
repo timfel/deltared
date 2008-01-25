@@ -423,7 +423,7 @@ class Constraint::Builder
     @methods = []
     @outputs = Set.new
     @strength = options[:strength]
-    @volatile = options[:volatile]
+    @volatile = !!options[:volatile]
   end
 
   # hide from rdoc
