@@ -67,7 +67,7 @@ class Variable
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
   attr_accessor :walk_strength #:nodoc:
-  attr_accessor :constant          #:nodoc:
+  attr_accessor :constant      #:nodoc:
   attr_writer   :mark	       #:nodoc:
 
   # hide from rdoc
