@@ -173,11 +173,20 @@ class Variable
   # +STRONG+.  Of course, since the constraint doesn't remain, other
   # constraints may prevent the new value from taking.
   #
+  # An edit constraint is not always actually created, and won't be
+  # captured by DeltaRed.group in any case.
+  #
   def value=(value)
     if @constraints.empty?
       @value = value
     else
-      edit!(value).disable      
+      saved_children = Thread.current[:__deltared_children__]
+      begin
+        Thread.current[:__deltared_children__] = nil
+        edit!(value).disable      
+      ensure
+        Thread.current[:__deltared_children__] = saved_children
+      end
     end
     value
   end
@@ -273,6 +282,8 @@ class Constraint
     @methods = methods.freeze
     @enforcing_method = nil
     @enabled = false
+    children = Thread.current[:__deltared_children__]
+    children.push self if children
   end
 
   # Creates a copy of this constraint with its variables replaced with
@@ -589,6 +600,8 @@ class Constraint::Group
   def initialize(*children)
     @children = children
     @constraints = nil
+    children = Thread.current[:__deltared_children__]
+    children.push self if children
   end
 
   # Enables the group's children in order.
@@ -853,14 +866,29 @@ def self.variables(*values, &block)
 end
 
 # Creates and returns a new Constraint::Group containing +children+.
-def self.group(*children)
+# If a block is given, any constraints or constraint groups created
+# within the block will be captured as part of the constraint group
+# as well, in order of creation.
+def self.group(*children) #:yields:
+  if block_given?
+    saved_children = Thread.current[:__deltared_children__]
+    begin
+      Thread.current[:__deltared_children__] = children
+      yield
+    ensure
+      Thread.current[:__deltared_children__] = saved_children 
+    end
+  end
   Constraint::Group.new(*children)
 end
 
 # Creates and returns a new Constraint::Group containing +children+,
-# enabling the new group before returning it.
-def self.group!(*children)
-  group(*children).enable
+# enabling the new group before returning it.  If a block is given,
+# any constraints or constraint groups created within the block will
+# be captured as part of the constraint group as well, in order of
+# creation.
+def self.group!(*children, &block) #:yields:
+  group(*children, &block).enable
 end
 
 end
