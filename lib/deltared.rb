@@ -805,6 +805,9 @@ def self.constraint!(options=Constraint::DEFAULT_OPTIONS)
   Constraint.new(options) { |builder| yield builder }.enable
 end
 
+# Creates a plan for recomputing the volatile constraints
+# reachable from the given variables, constraints, or constraint
+# groups.
 def self.plan_recompute(*seeds)
   Plan.new(*seeds)
 end
