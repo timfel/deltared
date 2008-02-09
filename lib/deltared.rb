@@ -280,12 +280,15 @@ class Constraint
   # to use a constraint as a "template" for creating other constraints
   # over different variables.
   #
-  # Returns the new constraint.
+  # Returns the new constraint, which will be enabled if this constraint
+  # is enabled.
   #
   def substitute(map)
     variables = @variables.map { |v| map[v] || v }.uniq
     methods = @methods.map { |m| m.substitute(map) }
-    Constraint.__new__(variables, @strength, @volatile, methods)
+    constraint = Constraint.__new__(variables, @strength, @volatile, methods)
+    constraint.enable if @enabled
+    constraint
   end
 
   # Enables this constraint, recomputing the values of any variables as needed,
@@ -577,6 +580,44 @@ class Constraint::Builder
   send :alias_method, :to_s, :inspect
 end
 
+# A Constraint::Group organizes a set of constraints (perhaps including other
+# groups) which can be enabled or disabled as a group.  When the group is
+# enabled, its children are enabled in order, and when a group is disabled,
+# its children are disabled in the opposite order.  Children of a group can
+# still be individually enabled or disabled.
+class Constraint::Group
+  def initialize(*children)
+    @children = children
+    @constraints = nil
+  end
+
+  # Enables the group's children in order.
+  def enable
+    @children.each { |c| c.enable }
+    self
+  end
+
+  # Disables the group's children in reverse order.
+  def disable
+    @children.reverse.each { |c| c.disable }
+    self
+  end
+
+  # Creates a duplicate group populated by constraints whose variables
+  # have been subtituted according to +map+.  See Constraint#substitute.
+  def substitute(map)
+    Group.new(*@children.map { |c| c.substitute(map) })
+  end
+
+  def constraints #:nodoc:
+    unless @constraints
+      @constraints = Set.new
+      @children.each { |c| @constraints.merge c.constraints }
+    end
+    @constraints
+  end
+end
+
 module Method #:nodoc:
   def output
     raise NotImplementedError, "#{self.class}#output not implemented"
@@ -760,7 +801,8 @@ end
 
 # Creates a new output constraint (a dummy constraint which
 # takes a number of variables as inputs and calls the given
-# block whenever they are updated).
+# block whenever they are updated).  The new constraint is
+# automatically enabled.
 def self.output(*variables, &block)
   raise ArgumentError, "No variables given" if variables.empty?
   raise ArgumentError, "No block given" unless block
@@ -808,6 +850,17 @@ def self.variables(*values, &block)
   else
     variables
   end
+end
+
+# Creates and returns a new Constraint::Group containing +children+.
+def self.group(*children)
+  Constraint::Group.new(*children)
+end
+
+# Creates and returns a new Constraint::Group containing +children+,
+# enabling the new group before returning it.
+def self.group!(*children)
+  group(*children).enable
 end
 
 end
