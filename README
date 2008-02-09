@@ -5,7 +5,9 @@ by Sannella et al.  (available http://citeseer.ist.psu.edu/sannella93multiway.ht
 
 == So, er, what does it do?
 
-Think Rake, but for your program's data instead of files.  Rake is actually
+Constraint solvers, generally, are good for solving problems which fit the
+description of "when this value changes, update these other values."  Think
+Rake, but for your program's data instead of files.  Rake is actually
 a constraint solver itself: when a file is updated, it knows which other
 files to update and the how to update them.  Similarly, when a DeltaRed
 "variable" changes, DeltaRed knows which other variables to update and
