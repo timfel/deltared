@@ -53,12 +53,15 @@ end
 class Mark #:nodoc:
 end 
 
-# Versus the DeltaBlue paper, larger values mean stronger strengths
-REQUIRED = 4 # the highest constraint strength; fails if it cannot be enforced
+# The highest constraint strength; fails if it cannot be enforced;
+# versus DeltaBlue as described in the paper, larger values mean
+# stronger constraints.
+REQUIRED = 4
 STRONG   = 3 
 MEDIUM   = 2
 WEAK     = 1
-WEAKEST  = 0 # the weakest constraint strength
+# The weakest constraint strength
+WEAKEST  = 0
 
 # Variables have values which may be determined by constraints.
 # See Constraint.
