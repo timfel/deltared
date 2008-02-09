@@ -84,7 +84,6 @@ class Variable
     @walk_strength = WEAKEST
     @mark = nil
     @constant = true
-    @edit_constraint = nil
     @exception = nil
   end
 
@@ -142,24 +141,43 @@ class Variable
     @mark.eql? mark
   end
 
+  # Creates a stay constraint for this variable with the given +strength+,
+  # returning the newly created constraint.  A stay constraint forces the
+  # value of the variable to remain constant.
+  def stay(strength=STRONG)
+    Constraint.__new__([self], strength, false, [StayMethod.new(self)])
+  end
+
+  # Creates a stay constraint for this variable with the given +strength+
+  # and enables it before returning it.  A stay constraint forces the value
+  # of the variable to remain constant.
+  def stay!(strength=STRONG)
+    stay.enable
+  end
+
+  # Creates an edit constraint with the given +strength+ to force the
+  # variable to the given +value+ and returns the newly created constraint.
+  def edit(value, strength=STRONG)
+    Constraint.__new__([self], strength, false, [EditMethod.new(self, value)])
+  end
+
+  # Creates an edit constraint with the given +strength+ to force the
+  # variable to the given +value+ and enables the newly created constraint
+  # before returing it.
+  def edit!(value, strength=STRONG)
+    edit(value, strength).enable
+  end
+
   # Sets the variable to a specific +value+.  Conceptually, this briefly
-  # enables a constant-value constraint on the variable with a strength of
-  # +STRONG+ in order to force the variable to the desired value.  Of
-  # course, since the "edit constraint" doesn't remain, other constraints
-  # may prevent the new value from taking.
+  # enables an edit constraint on the variable with a strength of
+  # +STRONG+.  Of course, since the constraint doesn't remain, other
+  # constraints may prevent the new value from taking.
   #
   def value=(value)
     if @constraints.empty?
       @value = value
     else
-      unless @edit_constraint
-        @edit_method = EditMethod.new(self, value)
-        @edit_constraint = Constraint.__new__([self], STRONG,
-                                              false, [@edit_method])
-      else
-        @edit_method.value = value
-      end
-      @edit_constraint.enable.disable
+      edit!(value).disable      
     end
     value
   end
@@ -570,6 +588,21 @@ module Method #:nodoc:
 
   def substitute(map)
     raise NotImplementedError, "#{self.class}#substitute not implemented"
+  end
+end
+
+class StayMethod #:nodoc:
+  include Method
+  attr_reader :output
+
+  def initialize(output)
+    @output = output
+  end
+
+  def call ; self ; end
+
+  def substitute(map)
+    StayMethod.new(map[@output] || @output)
   end
 end
 

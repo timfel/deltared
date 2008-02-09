@@ -12,6 +12,21 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 10, a.value
   end
 
+  def test_stay_and_edit_constraints
+    a = DeltaRed::Variable.new(0)
+    a.stay!(DeltaRed::MEDIUM)
+
+    c = a.edit!(1, DeltaRed::WEAKEST)
+    assert_equal 0, a.value
+    c.disable
+    assert_equal 0, a.value
+
+    c = a.edit!(2, DeltaRed::REQUIRED)
+    assert_equal 2, a.value
+    c.disable
+    assert_equal 2, a.value
+  end
+
   def test_simple_volatile
     a = DeltaRed::Variable.new(0)
     val = 20
