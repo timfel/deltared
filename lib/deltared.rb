@@ -42,7 +42,10 @@ end
 
 module DeltaRed
 
+# Raised when the value of a variable whose value could not be computed
+# is requested.
 class FormulaError < RuntimeError
+  # The exception with which the computation failed
   attr_reader :reason
   def initialize(reason)
     super("#{reason.class}: #{reason.message}")
@@ -90,7 +93,8 @@ class Variable
     @exception = nil
   end
 
-  # the variable's current value
+  # Returns the variable's current value, or raises a FormulaError if
+  # there was an exception when recomputing the variable.
   def value
     raise FormulaError, @exception if @exception
     @value
