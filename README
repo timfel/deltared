@@ -1,7 +1,7 @@
 DeltaRed is a multi-way constraint solving library for Ruby based on the
-the DeltaBlue algorithm as presented in "Multi-way versus One-way
-Constraints in User Interfaces: Experience with the DeltaBlue Algorithm"
-by Sannella et al. (available http://citeseer.ist.psu.edu/sannella93multiway.html )
+the DeltaBlue algorithm presented in "Multi-way versus One-way Constraints
+in User Interfaces: Experience with the DeltaBlue Algorithm"
+by Sannella et al.  (available http://citeseer.ist.psu.edu/sannella93multiway.html )
 
 == So, er, what does it do?
 
