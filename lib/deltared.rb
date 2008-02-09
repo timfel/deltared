@@ -53,6 +53,7 @@ end
 class Mark #:nodoc:
 end 
 
+# Versus the DeltaBlue paper, larger values mean stronger strengths
 REQUIRED = 4 # the highest constraint strength; fails if it cannot be enforced
 STRONG   = 3 
 MEDIUM   = 2
