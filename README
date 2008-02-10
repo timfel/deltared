@@ -57,6 +57,48 @@ know to set <tt>number.value</tt> to its integer equivalent, and if
 <tt>number.value</tt> is set to a different integer, DeltaRed will
 automatically update <tt>string.value</tt>.
 
+== An Overview of the Pieces
+
+=== DeltaRed::Constraint
+
+A constraint which establishes relationships between the values of
+constraint variables and optionally external input (in the case of
+"volatile" constraints).  Constraints can be enabled and disabled via
+DeltaRed::Constraint#enable and DeltaRed::Constraint#disable.  Constraints
+are typically created via either DeltaRed.constraint or
+DeltaRed::Variable#constraint.
+
+An existing constraint can be used as a template for constructing a
+new constraint over different variables by calling
+DeltaRed::Constraint#substitute with a hash mapping from the old variables
+to the new ones.
+
+=== DeltaRed::Constraint::Group
+
+A group of constraints which may be enabled or disabled together.  Most
+often a set of constraints will be enabled during editing, and then disabled
+again afterwards; constraint groups exist to make this more convenient.
+Constraint groups are normally created via DeltaRed.group, which, when given
+a block, captures all of the constraints created within the block into
+the constraint group that DeltaRed.group returns.
+
+Similarly to individual constraints, constraint groups may also be used as
+templates for creating groups of new constraints, via
+DeltaRed::Constraint::Group#substitute.
+
+=== DeltaRed::Variable
+
+A variable which receives its value from constraints.  A variable's
+current value is accessible via DeltaRed::Variable#value.  Variables are
+most typically created via DeltaRed.variables.
+
+=== DeltaRed::Plan
+
+A plan is an optimized means for recomputing variables when the output
+of certain volatile constraints changes.  A plan for updating a set of
+volatile constraints can be constructed via DeltaRed.plan_recompute;
+updates can then be requested via DeltaRed::Plan#recompute.
+
 == Limitations
 
 While a DeltaRed constraint can encompass multiple formulae which output
