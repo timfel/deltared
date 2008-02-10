@@ -209,7 +209,7 @@ class Variable
   # See also DeltaRed.constraint, DeltaRed.constraint!, and
   # DeltaRed::Variable#constraint!
   #
-  def constraint(*inputs, &block)
+  def constraint(*inputs, &block) #:yields:*input_values
     options = Constraint::DEFAULT_OPTIONS
     options = inputs.pop if Hash === inputs.last
     DeltaRed.constraint(options) do |c|
@@ -223,7 +223,7 @@ class Variable
   # See also DeltaRed.constraint, DeltaRed.constraint!, and
   # DeltaRed::Variable#constraint
   #
-  def constraint!(*inputs, &block)
+  def constraint!(*inputs, &block) #:yields:*input_values
     constraint(*inputs, &block).enable
   end
 end
@@ -530,7 +530,7 @@ class Constraint::Builder
   # at a time to enforce the constraint; this second example should
   # should be expressed as two separate constraints instead.
   #
-  def formula(args, &code) #:yields:*values
+  def formula(args, &code) #:yields:*input_values
     case args
     when Hash
       if args.size > 1
