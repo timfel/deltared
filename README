@@ -3,7 +3,7 @@ the DeltaBlue algorithm presented in "Multi-way versus One-way Constraints
 in User Interfaces: Experience with the DeltaBlue Algorithm"
 by Sannella et al.  (available http://citeseer.ist.psu.edu/sannella93multiway.html )
 
-== So, er, what does it do?
+== So What Does It Do?
 
 Constraint solvers, generally, are good for solving problems which fit the
 description of "when this value changes, update these other values."  Think
