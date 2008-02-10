@@ -164,15 +164,15 @@ class Variable
 
   # Creates an edit constraint with the given +strength+ to force the
   # variable to the given +value+ and returns the newly created constraint.
-  def edit(value, strength=STRONG)
+  def force_value(value, strength=STRONG)
     Constraint.__new__([self], strength, false, [EditMethod.new(self, value)])
   end
 
   # Creates an edit constraint with the given +strength+ to force the
   # variable to the given +value+ and enables the newly created constraint
   # before returing it.
-  def edit!(value, strength=STRONG)
-    edit(value, strength).enable
+  def force_value!(value, strength=STRONG)
+    force_value(value, strength).enable
   end
 
   # Sets the variable to a specific +value+.  Conceptually, this briefly
@@ -190,7 +190,7 @@ class Variable
       saved_children = Thread.current[:__deltared_children__]
       begin
         Thread.current[:__deltared_children__] = nil
-        edit!(value).disable      
+        force_value!(value).disable      
       ensure
         Thread.current[:__deltared_children__] = saved_children
       end
