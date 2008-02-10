@@ -101,8 +101,8 @@ updates can then be requested via DeltaRed::Plan#recompute.
 
 == Limitations
 
-While a DeltaRed constraint can encompass multiple formulae which output
-to different variables, a formula can only output to a single variable,
+While a DeltaRed constraint can contain multiple formulae, each outputting
+to a different variable, a formula can only output to a single variable,
 and only one formula in a constraint may be active at a time.  Similarly,
 while a variable may have multiple constraints which can determine its
 value, only one of those constraints may be active at a time; constraints
