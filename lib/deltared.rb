@@ -185,7 +185,7 @@ class Variable
   # captured by DeltaRed.group in any case.
   #
   def value=(value)
-    if @constraints.empty?
+    if !@determined_by and @constraints.all? { |c| c.volatile? }
       @value = value
     else
       saved_children = Thread.current[:__deltared_children__]
