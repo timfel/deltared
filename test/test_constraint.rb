@@ -33,9 +33,9 @@ class ConstraintTest < Test::Unit::TestCase
     DeltaRed.constraint! do |c|
       c.volatile_formula(a) { val }
     end
-    assert_equal 20, a.value
+    assert_equal 0, a.value
     val = 30
-    assert_equal 20, a.value
+    assert_equal 0, a.value
     a.propagate
     assert_equal 30, a.value
   end
@@ -179,13 +179,11 @@ class ConstraintTest < Test::Unit::TestCase
   end
 
   def test_volatile_formula_exception
-    x = DeltaRed::Variable.new
-    fail = false
+    x = DeltaRed::Variable.new(42)
     constraint = DeltaRed.constraint! do |c|
-      c.volatile_formula(x) { raise "blah" if fail ; fail }
+      c.volatile_formula(x) { raise "blah" }
     end
-    assert_equal false, x.value
-    fail = true
+    assert_equal 42, x.value
     x.propagate
     assert_raise(DeltaRed::FormulaError) do
       x.value

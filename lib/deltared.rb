@@ -424,9 +424,9 @@ class Constraint
   def compute_incremental #:nodoc:
     output = @enforcing_method.output
     output.walk_strength = output_walk_strength
-    output.constant = !@volatile && inputs.all? { |v| v.constant? }
-    # precompute volatile constraints too; better matches naive expectations
-    @enforcing_method.call
+    constant = !@volatile && inputs.all? { |v| v.constant? }
+    output.constant = constant
+    @enforcing_method.call if constant
     self
   end
 
