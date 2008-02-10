@@ -57,6 +57,15 @@ know to set <tt>number.value</tt> to its integer equivalent, and if
 <tt>number.value</tt> is set to a different integer, DeltaRed will
 automatically update <tt>string.value</tt>.
 
+== Limitations
+
+While a DeltaRed constraint can encompass multiple formulae which output
+to different variables, a formula can only output to a single variable,
+and only one formula in a constraint may be active at a time.  Similarly,
+while a variable may have multiple constraints which can determine its
+value, only one of those constraints may be active at a time; constraints
+with higher strengths will take precedence over those with lower strengths.
+
 == What about threads?
 
 DeltaRed is perfectly threadsafe as long as threads don't share variables
