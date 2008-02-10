@@ -812,26 +812,16 @@ def self.plan_recompute(*seeds)
   Plan.new(*seeds)
 end
 
-# Creates a new input variable (a variable with a volatile
-# constraint automatically added based on the passed-in block)
-def self.input(&block)
-  raise ArgumentError, "No block given" unless block
-  variable = Variable.new
-  method = UserMethod.new(variable, [], block)
-  Constraint.__new__([variable], STRONG, true, [method]).enable
-  variable
-end
-
 # Creates a new output constraint (a dummy constraint which
 # takes a number of variables as inputs and calls the given
 # block whenever they are updated).  The new constraint is
 # automatically enabled.
-def self.output(*variables, &block)
+def self.output(*variables, &block) #:yields:*values
   raise ArgumentError, "No variables given" if variables.empty?
   raise ArgumentError, "No block given" unless block
   variable = Variable.new
   method = UserMethod.new(variable, variables, block)
-  Constraint.__new__([variable, *variables], STRONG, false, [method]).enable
+  Constraint.__new__([variable, *variables], REQUIRED, false, [method]).enable
 end
 
 # Creates new variable objects with the given initial +values+.

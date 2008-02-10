@@ -33,10 +33,11 @@ class ConstraintTest < Test::Unit::TestCase
     DeltaRed.constraint! do |c|
       c.volatile_formula(a) { val }
     end
-    assert_equal val, a.value
+    assert_equal 20, a.value
     val = 30
+    assert_equal 20, a.value
     a.recompute
-    assert_equal val, a.value
+    assert_equal 30, a.value
   end
 
   def test_simple_no_block

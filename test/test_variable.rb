@@ -63,13 +63,4 @@ class VariableTest < Test::Unit::TestCase
     assert_equal var, var.recompute
     assert_equal 3, var.value
   end
-
-  def test_input
-    val = 5
-    v = DeltaRed.input { val }
-    assert_equal val, v.value
-    val = 10
-    v.recompute
-    assert_equal val, v.value
-  end
 end
