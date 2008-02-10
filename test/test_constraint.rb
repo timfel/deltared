@@ -16,12 +16,12 @@ class ConstraintTest < Test::Unit::TestCase
     a = DeltaRed::Variable.new(0)
     a.stay!(DeltaRed::MEDIUM)
 
-    c = a.force_value!(1, DeltaRed::WEAKEST)
+    c = a.edit!(1, DeltaRed::WEAKEST)
     assert_equal 0, a.value
     c.disable
     assert_equal 0, a.value
 
-    c = a.force_value!(2, DeltaRed::REQUIRED)
+    c = a.edit!(2, DeltaRed::REQUIRED)
     assert_equal 2, a.value
     c.disable
     assert_equal 2, a.value
