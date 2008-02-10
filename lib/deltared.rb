@@ -131,10 +131,11 @@ class Variable
     unenforced.to_a.sort! { |a, b| b.strength <=> a.strength }
   end
 
-  # Recomputes the variable's value and returns +self+.  Really only
-  # useful if this variable is directly determined by a volatile constraint.
-  def recompute
-    Plan.new(self).recompute unless @constraints.empty?
+  # Recomputes the volatile constraints on this variable, propagates their
+  # results, and returns +self+.  Really only useful if this variable is
+  # directly determined by a volatile constraint.
+  def propagate
+    Plan.new(self).propagate unless @constraints.empty?
     self
   end
 
@@ -429,10 +430,10 @@ class Constraint
     self
   end
 
-  # Recomputes the constraint's output variables and returns +self+.  Really
-  # only useful if this constraint is volatile.
-  def recompute
-    Plan.new(self).recompute
+  # Recomputes the constraint's output, propagates it, and returns +self+.
+  # Has no effect unless the constraint is volatile.
+  def propagate
+    Plan.new(self).propagate
     self
   end
 
@@ -573,8 +574,8 @@ class Constraint::Builder
   #
   # Returns +self+.
   #
-  # See Constraint#volatile?, Variable#recompute, Constraint#recompute,
-  # and Plan#recompute.
+  # See Constraint#volatile?, Variable#propagate, Constraint#propagate,
+  # and Plan#propagate.
   #
   def volatile_formula(args, &code)
     formula(args, &code)
@@ -716,16 +717,12 @@ class UserMethod #:nodoc:
   end
 end
 
-# A Plan provides an optimized way to recompute volatile constraints.
-# Plans remain valid until a constraint reachable from the plan (i.e.
-# any constraint which is connected to the plan's constraints or
-# variables by other constraints) is enabled or disabled, after which
-# any old plans must be discarded and new plans generated in order
-# to continue producing correct updates.
-#
-# Note that, since it is effectively adding and removing a constraint,
-# setting variables with Variable#value= can also potentially disturb
-# a plan if they are part of the same constraint "network" as the plan.
+# A Plan provides an optimized way to recompute and propagate the results
+# of volatile constraints.  Plans remain valid until a constraint reachable
+# from the plan (i.e. any constraint which is connected to the plan's
+# constraints or variables by other constraints) is enabled or disabled,
+# after which any old plans must be discarded and new plans generated in
+# order to continue producing correct updates.
 #
 class Plan
   class << self
@@ -770,7 +767,7 @@ class Plan
   end
 
   # Recomputes the variables covered by this plan and returns +self+.
-  def recompute
+  def propagate
     @plan.each { |method| method.call }
     self
   end
@@ -805,10 +802,10 @@ def self.constraint!(options=Constraint::DEFAULT_OPTIONS)
   Constraint.new(options) { |builder| yield builder }.enable
 end
 
-# Creates a plan for recomputing the volatile constraints
-# reachable from the given variables, constraints, or constraint
-# groups.
-def self.plan_recompute(*seeds)
+# Creates a plan for recompuating and propagating the volatile
+# constraints given as associated variables, directly as constraints,
+# or as constraint groups.
+def self.plan_propagate(*seeds)
   Plan.new(*seeds)
 end
 

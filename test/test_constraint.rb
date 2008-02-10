@@ -36,7 +36,7 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 20, a.value
     val = 30
     assert_equal 20, a.value
-    a.recompute
+    a.propagate
     assert_equal 30, a.value
   end
 
@@ -186,7 +186,7 @@ class ConstraintTest < Test::Unit::TestCase
     end
     assert_equal false, x.value
     fail = true
-    x.recompute
+    x.propagate
     assert_raise(DeltaRed::FormulaError) do
       x.value
     end
