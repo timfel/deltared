@@ -178,7 +178,7 @@ class Variable
 
   # Sets the variable to a specific +value+.  Conceptually, this briefly
   # enables an edit constraint on the variable with a strength of
-  # +STRONG+.  Of course, since the constraint doesn't remain, other
+  # +REQUIRED+.  Of course, since the constraint doesn't remain, other
   # constraints may prevent the new value from taking.
   #
   # An edit constraint is not always actually created, and won't be
@@ -191,7 +191,7 @@ class Variable
       saved_children = Thread.current[:__deltared_children__]
       begin
         Thread.current[:__deltared_children__] = nil
-        edit!(value).disable      
+        edit!(value, REQUIRED).disable      
       ensure
         Thread.current[:__deltared_children__] = saved_children
       end
