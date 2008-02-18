@@ -36,7 +36,7 @@ class ConstraintTest < Test::Unit::TestCase
     assert_equal 0, a.value
     val = 30
     assert_equal 0, a.value
-    a.propagate
+    a.propagate_volatile
     assert_equal 30, a.value
   end
 
@@ -184,7 +184,7 @@ class ConstraintTest < Test::Unit::TestCase
       c.volatile_formula(x) { raise "blah" }
     end
     assert_equal 42, x.value
-    x.propagate
+    x.propagate_volatile
     assert_raise(DeltaRed::FormulaError) do
       x.value
     end

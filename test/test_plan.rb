@@ -2,7 +2,7 @@ require 'test/unit'
 require 'deltared'
 
 class PlanTest < Test::Unit::TestCase
-  def test_plan_propagate
+  def test_plan
     a_val = 1
     b_val = 11
     a, b = DeltaRed.variables(8, 5)
@@ -16,10 +16,10 @@ class PlanTest < Test::Unit::TestCase
     assert_equal 5, b.value
     a_val = 2
     b_val = 12
-    plan = DeltaRed.plan_propagate(a, b_constraint)
+    plan = DeltaRed.plan(a, b_constraint)
     assert_equal 8, a.value
     assert_equal 5, b.value
-    plan.propagate
+    plan.propagate_volatile
     assert_equal 2, a.value
     assert_equal 12, b.value
   end
