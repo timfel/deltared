@@ -145,7 +145,7 @@ class Variable
     }.to_set
   end
 
-  def marked?(mark) #:nodoc:
+  def marked_with?(mark) #:nodoc:
     @mark.eql? mark
   end
 
@@ -361,7 +361,8 @@ class Constraint
     weakest_strength = @strength
     for method in @methods
       output = method.output
-      if not output.marked? mark and output.walk_strength < weakest_strength
+      if not output.marked_with? mark and
+         output.walk_strength < weakest_strength
         weakest_strength = output.walk_strength
         weakest_method = method
       end
@@ -374,7 +375,7 @@ class Constraint
     todo = Set[self]
     until todo.empty?
       constraint = todo.shift
-      if constraint.enforcing_method.output.marked? mark
+      if constraint.enforcing_method.output.marked_with? mark
         constraint.incremental_remove
         raise RuntimeError, "Cycle encountered"
       end
@@ -418,7 +419,7 @@ class Constraint
   private :inputs #:nodoc:
 
   def inputs_known?(mark) #:nodoc:
-    inputs.all? { |v| v.marked? mark or v.constant? }
+    inputs.all? { |v| v.marked_with? mark or v.constant? }
   end
 
   def compute_incremental #:nodoc:
@@ -758,7 +759,7 @@ class Plan
       constraint = hot.shift
       enforcing_method = constraint.enforcing_method
       output = enforcing_method.output
-      if not output.marked? mark and constraint.inputs_known? mark
+      if not output.marked_with? mark and constraint.inputs_known? mark
         @plan.push enforcing_method
         output.mark mark
         hot.merge output.consuming_constraints
