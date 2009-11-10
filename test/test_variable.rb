@@ -60,7 +60,7 @@ class VariableTest < Test::Unit::TestCase
 
   def test_trivial_recompute
     var = DeltaRed::Variable.new(3)
-    assert_equal var, var.propagate_volatile
+    assert_equal var, var.recompute
     assert_equal 3, var.value
   end
 end

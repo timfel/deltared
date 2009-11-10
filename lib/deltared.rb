@@ -134,8 +134,8 @@ class Variable
   # Recomputes the volatile constraints on this variable, propagates their
   # results, and returns +self+.  Really only useful if this variable is
   # directly determined by a volatile constraint.
-  def propagate_volatile
-    Plan.new(self).propagate_volatile unless @constraints.empty?
+  def recompute
+    Plan.new(self).recompute unless @constraints.empty?
     self
   end
 
@@ -432,8 +432,8 @@ class Constraint
 
   # Recomputes the constraint's output, propagates it, and returns +self+.
   # Has no effect unless the constraint is volatile.
-  def propagate_volatile
-    Plan.new(self).propagate_volatile
+  def recompute
+    Plan.new(self).recompute
     self
   end
 
@@ -770,7 +770,7 @@ class Plan
   end
 
   # Recomputes the variables covered by this plan and returns +self+.
-  def propagate_volatile
+  def recompute
     @plan.each { |method| method.call }
     self
   end

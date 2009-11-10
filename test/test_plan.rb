@@ -19,7 +19,7 @@ class PlanTest < Test::Unit::TestCase
     plan = DeltaRed.plan(a, b_constraint)
     assert_equal 8, a.value
     assert_equal 5, b.value
-    plan.propagate_volatile
+    plan.recompute
     assert_equal 2, a.value
     assert_equal 12, b.value
   end

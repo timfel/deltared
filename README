@@ -94,10 +94,10 @@ most typically created via DeltaRed.variables.
 
 === DeltaRed::Plan
 
-A plan is an optimized means for recomputing variables when the output
-of certain volatile constraints changes.  A plan for updating a set of
-volatile constraints can be constructed via DeltaRed.plan_recompute;
-updates can then be requested via DeltaRed::Plan#recompute.
+A plan is an optimized means for recomputing variables when external
+inputs of volatile constraints change.  A plan for updating a set of
+volatile constraints can be constructed via DeltaRed.plan; updates can
+then be requested via DeltaRed::Plan#recompute.
 
 == Limitations
 
