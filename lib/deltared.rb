@@ -160,7 +160,7 @@ class Variable
   # and enables it before returning it.  A stay constraint forces the value
   # of the variable to remain constant.
   def stay!(strength=STRONG)
-    stay.enable
+    stay(strength).enable
   end
 
   # Creates an edit constraint with the given +strength+ to force the
@@ -181,8 +181,7 @@ class Variable
   # +REQUIRED+.  Of course, since the constraint doesn't remain, other
   # constraints may prevent the new value from taking.
   #
-  # An edit constraint is not always actually created, and won't be
-  # captured by DeltaRed.group in any case.
+  # This method doesn't permanently create an edit constraint.
   #
   def value=(value)
     if !@determined_by and @constraints.all? { |c| c.volatile? }
@@ -531,6 +530,9 @@ class Constraint::Builder
   # This would require DeltaRed to evaluate more than one formula
   # at a time to enforce the constraint; this second example should
   # should be expressed as two separate constraints instead.
+  #
+  # As a general rule, the same set of variables should appear in
+  # all the formulas belonging to a particular constraint.
   #
   def formula(args, &code) #:yields:*input_values
     case args
