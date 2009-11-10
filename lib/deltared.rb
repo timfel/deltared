@@ -302,7 +302,7 @@ class Constraint
   # is enabled.
   #
   def substitute(map)
-    variables = @variables.map { |v| map[v] || v }.uniq
+    variables = @variables.map { |v| map.fetch(v, v) }.uniq
     methods = @methods.map { |m| m.substitute(map) }
     constraint = Constraint.__new__(variables, @strength, @volatile, methods)
     constraint.enable if @enabled
@@ -667,7 +667,7 @@ class StayMethod #:nodoc:
   def call ; self ; end
 
   def substitute(map)
-    StayMethod.new(map[@output] || @output)
+    StayMethod.new(map.fetch(@output, @output))
   end
 end
 
@@ -687,7 +687,7 @@ class EditMethod #:nodoc:
   end
 
   def substitute(map)
-    EditMethod.new(map[@output] || @output, value)
+    EditMethod.new(map.fetch(@output, @output), value)
   end
 end
 
@@ -714,8 +714,8 @@ class UserMethod #:nodoc:
   end
 
   def substitute(map)
-    output = map[@output] || @output
-    inputs = @inputs.map { |i| map[i] || i }
+    output = map.fetch(@output, @output)
+    inputs = @inputs.map { |i| map.fetch(i, i) }
     UserMethod.new(output, inputs, @code)
   end
 end
@@ -813,8 +813,8 @@ def self.plan(*seeds)
 end
 
 # Creates a new output constraint (a dummy constraint which
-# takes a number of variables as inputs and calls the given
-# block whenever they are updated).  The new constraint is
+# takes one or more variables as inputs and calls the given
+# block whenever they change).  The new constraint is
 # automatically enabled.
 def self.output(*variables, &block) #:yields:*values
   raise ArgumentError, "No variables given" if variables.empty?
@@ -850,12 +850,12 @@ end
 #    # d is a new Variable object with the initial value nil
 #  end
 #
-def self.variables(*values, &block)
-  count = values.size
-  count = block.arity if block and block.arity > values.size
+def self.variables(*initial_values, &block) #:yields:*variables
+  count = initial_values.size
+  count = block.arity if block and block.arity > initial_values.size
   raise ArgumentError, "No variables requested" if count.zero?
   variables = Array.new(count)
-  (0...count).zip(values) { |i, v| variables[i] = Variable.new(v) }
+  (0...count).zip(initial_values) { |i, v| variables[i] = Variable.new(v) }
   if block
     block.call *variables
   elsif count == 1
