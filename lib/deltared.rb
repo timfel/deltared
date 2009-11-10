@@ -1,6 +1,6 @@
 # DeltaRed - A multi-way constraint solver for Ruby
 #
-# Copyright 2007-2008  MenTaLguY <mental@rydia.net>
+# Copyright 2007-2009  MenTaLguY <mental@rydia.net>
 #
 # All rights reserved.
 # 
