@@ -100,7 +100,7 @@ class Variable
     @value
   end
 
-  def __value__=(value) #:nodoc:
+  def __set_value__(value) #:nodoc:
     @exception = nil
     @value = value
   end
@@ -682,7 +682,7 @@ class EditMethod #:nodoc:
   end
 
   def call
-    @output.__value__ = @value
+    @output.__set_value__ @value
     self
   end
 
@@ -704,7 +704,7 @@ class UserMethod #:nodoc:
 
   def call
     begin
-      @output.__value__ = @code.call *@inputs.map { |i| i.value }
+      @output.__set_value__ @code.call *@inputs.map { |i| i.value }
     rescue FormulaError => e
       @output.__fail__(e.reason)
     rescue Exception => e
