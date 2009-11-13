@@ -628,7 +628,7 @@ class Constraint::Group
   end
 
   # Creates a duplicate group populated by constraints whose variables
-  # have been subtituted according to +map+.  See Constraint#substitute.
+  # have been substituted according to +map+.  See Constraint#substitute.
   def substitute(map)
     Group.new(*@children.map { |c| c.substitute(map) })
   end

@@ -30,6 +30,12 @@ to the rule tells it how to do that (in this case, <tt>a.value</tt> is obtained
 by multiplying <tt>b.value</tt> -- which DeltaRed helpfully passed to the
 block -- by 2).
 
+The same constraint (since it only contains a single formula) can also be
+expressed in a simpler fashion:
+
+ a, b = DeltaRed.variables(0, 0)
+ a.constraint!(b) { |v| v * 2 }
+
 Now, one difference between Rake and DeltaRed is that Rake is a
 <em>one-way</em> constraint solver.  You can tell it how to make one
 file given another, but that's it.  DeltaRed is a <em>multi-way</em>
@@ -95,7 +101,7 @@ most typically created via DeltaRed.variables.
 === DeltaRed::Plan
 
 A plan is an optimized means for recomputing variables when external
-inputs of volatile constraints change.  A plan for updating a set of
+inputs (via volatile constraints) change.  A plan for updating a set of
 volatile constraints can be constructed via DeltaRed.plan; updates can
 then be requested via DeltaRed::Plan#recompute.
 
