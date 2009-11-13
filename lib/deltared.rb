@@ -256,10 +256,16 @@ class Constraint
   # DeltaRed::WEAKEST and DeltaRed::REQUIRED, inclusive (for instance:
   # WEAKEST, WEAK, MEDIUM, STRONG or REQUIRED)
   attr_reader :strength
-  # boolean indicating whether the constraint has volatile formulae
-  attr_reader :volatile
+  
+  # returns true if the constraint is volatile
+  def volatile?
+    @volatile
+  end
+  attr_reader :volatile #:nodoc:
+  send :alias_method, :volatile?, :volatile
+  send :remove_method, :volatile
+
   attr_reader :enforcing_method #:nodoc:
-  alias volatile? volatile
   alias enabled? enabled
 
   # duck-typing for plan seeding
