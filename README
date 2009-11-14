@@ -14,9 +14,7 @@ files to update and the how to update them.  Similarly, when a DeltaRed
 how to update them.
 
  a, b = DeltaRed.variables(0, 0)
- DeltaRed.constraint! do |c|
-   c.formula(b => a) { |v| v * 2 }
- end
+ a.constraint!(b) { |v| v * 2 }
 
  b.value = 3
  p a.value # => 6
@@ -31,10 +29,12 @@ by multiplying <tt>b.value</tt> -- which DeltaRed helpfully passed to the
 block -- by 2).
 
 The same constraint (since it only contains a single formula) can also be
-expressed in a simpler fashion:
+expressed in a more verbose fashion:
 
  a, b = DeltaRed.variables(0, 0)
- a.constraint!(b) { |v| v * 2 }
+ DeltaRed.constraint! do |c|
+   c.formula(b => a) { |v| v * 2 }
+ end
 
 Now, one difference between Rake and DeltaRed is that Rake is a
 <em>one-way</em> constraint solver.  You can tell it how to make one
@@ -45,7 +45,9 @@ an <tt>.o</tt> file from a <tt>.c</tt> file, but also how to recover
 a <tt>.c</tt> file from an existing <tt>.o</tt> file.  (Of course,
 it'd still be up to you to write the decompiler...)
 
-Here's an example of a similar kind of thing with DeltaRed:
+Here's an example of a similar kind of thing with DeltaRed, taking
+advantage of the ability to define multiple formulas relating the
+values of the same variables:
 
  string, number = DeltaRed.variables("0", 0)
  DeltaRed.constraint! do |c|
@@ -62,6 +64,15 @@ If <tt>string.value</tt> gets set to a different string, DeltaRed will
 know to set <tt>number.value</tt> to its integer equivalent, and if
 <tt>number.value</tt> is set to a different integer, DeltaRed will
 automatically update <tt>string.value</tt>.
+
+One limitation of DeltaRed is that, while bidirectional loops like this
+are permitted within a single constraint, constraint loops aren't
+supported.  The following snippet is incorrect and won't work as
+expected:
+
+ string, number = DeltaRed.variables("0", 0)
+ string.constraint!(number) { |n| n.to_s }
+ number.constraint!(string) { |s| s.to_i }
 
 == An Overview of the Pieces
 
