@@ -66,13 +66,141 @@ know to set <tt>number.value</tt> to its integer equivalent, and if
 automatically update <tt>string.value</tt>.
 
 One limitation of DeltaRed is that, while bidirectional loops like this
-are permitted within a single constraint, constraint loops aren't
-supported.  The following snippet is incorrect and won't work as
-expected:
+are permitted within a single constraint, loops involving multiple
+constraints aren't really supported.  The following version of the above
+won't necessarily work as expected:
 
  string, number = DeltaRed.variables("0", 0)
  string.constraint!(number) { |n| n.to_s }
  number.constraint!(string) { |s| s.to_i }
+
+== Typical Use
+
+=== Edit Constraints
+
+As in most constraint libraries, variables are updated by adding or
+removing (enabling or disabling) constraints.  Even when a variable's
+value is set via DeltaRed::Variable#value=, DeltaRed creates a
+temporary constraint to force the variable to a specific value.  However,
+the temporary constraint created by DeltaRed::Variable#value= doesn't
+last.  If you want to hold on to an "edit constraint", you can explicitly
+create one via DeltaRed::Variable#edit.
+
+ v = DeltaRed.variables(5)
+ c = v.edit(10)
+
+Note that at this point the variable's value is still five, since the
+edit constraint has not been enabled.  Although it is slightly more
+efficient, this snippet is identical in function to:
+
+ v = DeltaRed.variables(5)
+ c = v.constraint { 10 }
+
+Using DeltaRed::Variable#constraint! or DeltaRed::Variable#edit!
+would have enabled the constraint along with creating it.  To
+enable a constraint after creating it, we can call
+DeltaRed::Constraint#enable:
+
+ v.value # => 5
+ c.enable
+ v.value # => 10
+
+Now the variable's value is ten, and since there are no other constraints
+determining its value, it retains that value after the edit constraint is
+removed.
+
+ c.disable
+ v.value # => 10
+
+=== Stay Constraints
+
+Often, when using multi-way constraints, there can be ambiguities
+regarding which variable should be updated.  Stay constraints can help
+resolve this ambiguity.
+
+ height, top, bottom = DeltaRed.variables(0, 0, 0)
+ DeltaRed.constraint! do |c|
+   c.formula([top, bottom] => height) { |t, b| b - t }
+   c.formula([top, height] => bottom) { |t, h| t + h }
+   c.formula([bottom, height] => top) { |b, h| b - h }
+ end
+
+If we change height at this point, should top or bottom change?  We
+can use a stay constraint to resolve the ambiguity:
+
+ s = top.stay!
+ height.value = 100
+ s.disable
+
+So, the stay constraint guarantees that, when we change the height,
+the top stays in place and the bottom moves:
+
+ top.value # => 0
+ bottom.value # => 100
+
+DeltaRed also provides a slightly more Rubyish way of using temporary
+stay constraints:
+
+ top.stay! do
+   height.value = 100
+ end
+
+=== Plans and Volatile Constraints
+
+Enabling or disabling a constraint may involve updating large portions
+of the constraint network, so DeltaRed provides an optimization for
+updating variables in response to quickly changing inputs.  A constraint
+can be declared as volatile, which means that it will only be evaluated
+upon explicit request, as part of an optimized update plan.
+
+For example:
+
+ x_pos, y_pos = DeltaRed.variables(0, 0)
+ x_pos.constraint!(:volatile => true) { get_mouse_pos()[0] }
+ y_pos.constraint!(:volatile => true) { get_mouse_pos()[1] }
+
+At this point, an optimized update plan can be created for these
+constraints:
+
+ plan = DeltaRed.plan(x_pos, y_pos)
+
+(DeltaRed.plan can take a list of either volatile constraints, or variables
+directly determined those constraints.)  The DeltaRed::Plan#recompute can
+then be used to update variable values in response to input:
+
+ plan.recompute
+ x_pos.value # => the current mouse x
+ y_pos.value # => the current mouse y
+
+Note that the plan remains valid only as long as no constraints are
+enabled or disabled on variables which might influence or be influenced
+by the constraints for which the plan was computed.
+
+=== Output Constraints
+
+Output constraints can be used to update things external to the constraint
+network when variable values change.  Here's an example which updates an
+onscreen rectangle in response to changes to the value of variables
+describing the rectangle's dimensions:
+
+ def make_range_subgraph
+   min, max, delta = DeltaRed.variables(0, 0, 0)
+   DeltaRed.constraint! do |c|
+     c.formula([min, max] => delta) { |min_v, max_v| max_v - min_v }
+     c.formula([min, delta] => max) { |min_v, d| min + d }
+     c.formula([max, delta] => min) { |max_v, d| max_v - d }
+   end
+   [min, max, delta]
+ end
+
+ top, bottom, height = make_range_subgraph
+ left, right, width = make_range_subgraph
+
+ DeltaRed.output!(top, left, width, height) do |x, y, w, h|
+   # pseudocode
+   clear_screen
+   draw_rect(x, y, w, h)
+ end
 
 == An Overview of the Pieces
 

@@ -152,15 +152,27 @@ class Variable
   # Creates a stay constraint for this variable with the given +strength+,
   # returning the newly created constraint.  A stay constraint forces the
   # value of the variable to remain constant.
-  def stay(strength=STRONG)
+  def stay(strength=WEAK)
     Constraint.__new__([self], strength, false, [StayMethod.new(self)])
   end
 
   # Creates a stay constraint for this variable with the given +strength+
   # and enables it before returning it.  A stay constraint forces the value
-  # of the variable to remain constant.
-  def stay!(strength=STRONG)
-    stay(strength).enable
+  # of the variable to remain constant.  Passing a block will result in the
+  # creation of a temporary stay constraint which is discarded when the
+  # block exits.
+  def stay!(strength=WEAK)
+    if block_given?
+      s = temporary_constraint { stay(strength) }
+      s.enable
+      begin
+        yield
+      ensure
+        s.disable
+      end
+    else
+      stay(strength).enable
+    end
   end
 
   # Creates an edit constraint with the given +strength+ to force the
@@ -171,10 +183,32 @@ class Variable
 
   # Creates an edit constraint with the given +strength+ to force the
   # variable to the given +value+ and enables the newly created constraint
-  # before returing it.
+  # before returing it.  Passing a block will result in the creation of a
+  # temporary edit constraint which gets discarded after the block exits.
   def edit!(value, strength=STRONG)
-    edit(value, strength).enable
+    if block_given?
+      e = temporary_constraint { edit(value, strength) }
+      e.enable
+      begin
+        yield
+      ensure
+        e.disable
+      end
+    else
+      edit(value, strength).enable
+    end
   end
+
+  def temporary_constraint
+    saved_children = Thread.current[:__deltared_children__]
+    begin
+      Thread.current[:__deltared_children__] = nil
+      yield
+    ensure 
+      Thread.current[:__deltared_children__] = saved_children
+    end
+  end
+  private :temporary_constraint
 
   # Sets the variable to a specific +value+.  Conceptually, this briefly
   # enables an edit constraint on the variable with a strength of
@@ -187,13 +221,7 @@ class Variable
     if !@determined_by and @constraints.all? { |c| c.volatile? }
       @value = value
     else
-      saved_children = Thread.current[:__deltared_children__]
-      begin
-        Thread.current[:__deltared_children__] = nil
-        edit!(value, REQUIRED).disable      
-      ensure
-        Thread.current[:__deltared_children__] = saved_children
-      end
+      temporary_constraint { edit(value, REQUIRED) }.enable.disable
     end
     value
   end
