@@ -249,8 +249,12 @@ end
 # See also Variable.
 #
 class Constraint
-  # boolean indicating whether this constraint is currently enabled
-  attr_reader :enabled
+  # returns true if the constraint is enabled
+  def enabled? ; @enabled ; end
+  attr_reader :enabled #:nodoc:
+  send :alias_method, :enabled?, :enabled
+  send :remove_method, :enabled
+
   attr_reader :variables #:nodoc:
   # the strength of this constraint, generally a value between
   # DeltaRed::WEAKEST and DeltaRed::REQUIRED, inclusive (for instance:
@@ -258,15 +262,12 @@ class Constraint
   attr_reader :strength
   
   # returns true if the constraint is volatile
-  def volatile?
-    @volatile
-  end
+  def volatile? ; @volatile ; end
   attr_reader :volatile #:nodoc:
   send :alias_method, :volatile?, :volatile
   send :remove_method, :volatile
 
   attr_reader :enforcing_method #:nodoc:
-  alias enabled? enabled
 
   # duck-typing for plan seeding
   def constraints #:nodoc:
