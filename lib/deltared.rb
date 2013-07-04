@@ -69,7 +69,7 @@ WEAKEST  = 0
 # Variables have values which may be determined by constraints.
 # See Constraint.
 #
-class Variable
+class Variable < ConstraintObject
   attr_reader   :constraints   #:nodoc:
   attr_accessor :determined_by #:nodoc:
   attr_accessor :walk_strength #:nodoc:
@@ -276,7 +276,7 @@ end
 #
 # See also Variable.
 #
-class Constraint
+class Constraint < ConstraintObject
   # returns true if the constraint is enabled
   def enabled? ; @enabled ; end
   attr_reader :enabled #:nodoc:
@@ -762,7 +762,7 @@ end
 # after which any old plans must be discarded and new plans generated in
 # order to continue producing correct updates.
 #
-class Plan
+class Plan < ConstraintObject
   class << self
     send :alias_method, :private_new, :new
     private :private_new
